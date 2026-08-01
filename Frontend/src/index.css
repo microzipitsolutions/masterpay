@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+button,
+a,
+[role="button"],
+.cursor-clickable {
+  cursor: pointer;
+}
