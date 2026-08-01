@@ -1362,6 +1362,8 @@ website: ${window.location.origin}/login`;
                   onChange={handleEditChange}
                   required
                   type="number"
+                  min="0"
+                  max="100"
                   step="0.01"
                   className="h-[46px] w-full rounded-lg border border-slate-300 px-4 text-sm outline-none"
                 />

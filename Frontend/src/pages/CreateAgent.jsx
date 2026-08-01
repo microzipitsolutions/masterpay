@@ -57,7 +57,7 @@ function CreateAgent() {
 
         <div>
           <label className="block mb-2 font-medium">Commission Percent *</label>
-          <input name="commission_percent" value={form.commission_percent} onChange={handleChange} required type="number" step="0.01" min="0" placeholder="e.g 2.5" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+          <input name="commission_percent" value={form.commission_percent} onChange={handleChange} required type="number" step="0.01" min="0" max="100" placeholder="e.g 6" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

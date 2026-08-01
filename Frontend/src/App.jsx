@@ -51,6 +51,8 @@ import MerchantBalanceTracking from "./pages/merchant/BalanceTracking";
 import AgentBalanceTracking from "./pages/agent/BalanceTracking";
 import AgentTopupApprovals from "./pages/AgentTopupApprovals";
 import CompanyWalletConfig from "./pages/CompanyWalletConfig";
+import AdminLedger from "./pages/AdminLedger";
+import SuperAdminLayout from "./layouts/SuperAdminLayout";
 import SuperAdminAgentTopups from "./pages/superadmin/AgentTopups";
 import SuperAdminCompanyWalletConfigs from "./pages/superadmin/CompanyWalletConfigs";
 import HierarchyOverviewPage from "./pages/superadmin/HierarchyOverviewPage";
@@ -138,6 +140,7 @@ function ProtectedLayout() {
 
             <Route path="/agent-topups" element={<AgentTopupApprovals />} />
             <Route path="/company-wallet-config" element={<CompanyWalletConfig />} />
+            <Route path="/admin-ledger" element={<AdminLedger />} />
 
             <Route path="/withdrawal/configs" element={<WithdrawalConfigs />} />
             <Route path="/withdrawal/transactions" element={<WithdrawalTransactions />} />
@@ -322,6 +325,10 @@ function App() {
             <SuperAdminCompanyWalletConfigs />
           </ProtectedUserRoute>
         }
+      />
+      <Route
+        path="/superadmin/admin-ledger"
+        element={<ProtectedUserRoute allowedRoles={["super-admin"]}><SuperAdminLayout><AdminLedger /></SuperAdminLayout></ProtectedUserRoute>}
       />
       <Route
         path="/superadmin/hierarchy"

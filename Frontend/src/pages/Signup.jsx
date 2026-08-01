@@ -10,7 +10,6 @@ function Signup() {
   const navigate = useNavigate();
   const { theme_color } = useBranding();
 
-  const [role, setRole] = useState("merchant");
   const [form, setForm] = useState({
     name: "",
     username: "",
@@ -38,7 +37,7 @@ function Signup() {
     setLoading(true);
     try {
       await api.post("/api/signup", {
-        role,
+        role: "agent",
         name: form.name.trim(),
         username: form.username.trim(),
         password: form.password,
@@ -76,27 +75,8 @@ function Signup() {
         </div>
         <p className="text-gray-500 mb-6 sm:mb-8">Create your account</p>
 
-        <div className="mb-6 flex rounded-xl border border-gray-200 p-1">
-          <button
-            type="button"
-            onClick={() => setRole("merchant")}
-            className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-              role === "merchant" ? "text-white" : "text-gray-600"
-            }`}
-            style={role === "merchant" ? { backgroundColor: theme_color } : {}}
-          >
-            Merchant
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole("agent")}
-            className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-              role === "agent" ? "text-white" : "text-gray-600"
-            }`}
-            style={role === "agent" ? { backgroundColor: theme_color } : {}}
-          >
-            Agent
-          </button>
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-[#2B7DE9]">
+          Agent Signup
         </div>
 
         {error && (
@@ -167,7 +147,7 @@ function Signup() {
             className="w-full text-white py-3 rounded-xl font-semibold disabled:opacity-60"
             style={{ backgroundColor: theme_color }}
           >
-            {loading ? "Creating account..." : `Sign up as ${role === "merchant" ? "Merchant" : "Agent"}`}
+            {loading ? "Creating account..." : "Sign up as Agent"}
           </button>
         </form>
 

@@ -38,6 +38,7 @@ const NAV_GROUPS = [
     items: [
       { to: "/superadmin/agent-topups", label: "Agent Top-Ups", icon: Wallet },
       { to: "/superadmin/company-wallet-configs", label: "Deposit Configs", icon: Landmark },
+      { to: "/superadmin/admin-ledger", label: "Admin Ledger", icon: Wallet },
     ],
   },
   {

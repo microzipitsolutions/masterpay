@@ -41,6 +41,10 @@ function TopUpWallet() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const usdtRate = Number(config?.usdt_rate || 0);
+  const inrAmount = method === "USDT" && Number(amount) > 0
+    ? Number(amount) * usdtRate
+    : Number(amount || 0);
 
   const loadConfig = async () => {
     try {
@@ -81,6 +85,11 @@ function TopUpWallet() {
     if (method === "USDT" && !config?.usdt_network) {
       setMessageType("error");
       setMessage("USDT network is not configured for your account yet — contact your admin");
+      return;
+    }
+    if (method === "USDT" && !(usdtRate > 0)) {
+      setMessageType("error");
+      setMessage("USDT rate is not configured for your account yet — contact your admin");
       return;
     }
     if (method === "USDT" && !usdtTxHash.trim()) {
@@ -259,7 +268,9 @@ function TopUpWallet() {
 
             <form onSubmit={submit} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Amount Deposited</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  {method === "USDT" ? "USDT Amount" : "Amount Deposited (INR)"}
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -269,6 +280,14 @@ function TopUpWallet() {
                   className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#2B7DE9]"
                   placeholder="0.00"
                 />
+                {method === "USDT" && (
+                  <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
+                    <div className="text-slate-600">Current rate: <strong>1 USDT = ₹{usdtRate.toLocaleString("en-IN", { maximumFractionDigits: 6 })}</strong></div>
+                    <div className="mt-1 text-base font-bold text-slate-900">
+                      INR Amount: ₹{inrAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {method === "USDT" ? (
@@ -313,7 +332,7 @@ function TopUpWallet() {
 
               <button
                 type="submit"
-                disabled={submitting || !!configError || (method === "USDT" && !config?.usdt_network)}
+                disabled={submitting || !!configError || (method === "USDT" && (!config?.usdt_network || !(usdtRate > 0)))}
                 className="w-full rounded-lg bg-[#2B7DE9] text-white font-semibold px-4 py-3 text-sm hover:bg-[#0b2a5b] disabled:opacity-50"
               >
                 {submitting ? "Submitting..." : "Submit Top-Up Request"}

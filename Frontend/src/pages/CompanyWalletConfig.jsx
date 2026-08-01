@@ -9,6 +9,7 @@ const emptyForm = {
   usdt_wallet_address: "",
   usdt_network: "",
   usdt_label: "",
+  usdt_rate: 1,
   bank_name: "",
   bank_account_number: "",
   bank_ifsc: "",
@@ -218,6 +219,20 @@ function CompanyWalletConfig({ extraParams = null, onSaved = null, title = "Comp
                       : "border-slate-300"
                   }`}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">USDT to INR Rate</label>
+                <input
+                  type="number"
+                  min="0.000001"
+                  step="0.000001"
+                  required
+                  value={form.usdt_rate || ""}
+                  onChange={(e) => setForm({ ...form, usdt_rate: e.target.value })}
+                  placeholder="e.g. 102"
+                  className="w-full h-11 rounded-lg border border-slate-300 px-3 text-sm"
+                />
+                <p className="mt-1 text-xs text-slate-400">Current conversion rate used for new Agent USDT top-ups.</p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">QR Code (optional)</label>

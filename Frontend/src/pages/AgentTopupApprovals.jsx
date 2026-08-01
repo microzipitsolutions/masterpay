@@ -46,6 +46,7 @@ function AgentTopupApprovals() {
 
   const [updatingId, setUpdatingId] = useState(null);
   const [reasonMap, setReasonMap] = useState({});
+  const [notesMap, setNotesMap] = useState({});
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -83,7 +84,7 @@ function AgentTopupApprovals() {
     setMessage("");
     try {
       setUpdatingId(id);
-      await api.put(`/api/admin/agent-topups/${id}/approve`);
+      await api.put(`/api/admin/agent-topups/${id}/approve`, { notes: (notesMap[id] || "").trim() });
       setMessageType("success");
       setMessage("Top-up approved and credited to agent's wallet.");
       load();
@@ -195,7 +196,9 @@ function AgentTopupApprovals() {
             <tr>
               <th className="px-5 py-4 font-semibold">Agent</th>
               <th className="px-5 py-4 font-semibold">Method</th>
-              <th className="px-5 py-4 font-semibold">Amount</th>
+              <th className="px-5 py-4 font-semibold">Top-Up</th>
+              <th className="px-5 py-4 font-semibold">Commission</th>
+              <th className="px-5 py-4 font-semibold">Final Credit</th>
               <th className="px-5 py-4 font-semibold">UTR / Hash</th>
               <th className="px-5 py-4 font-semibold">Submitted</th>
               <th className="px-5 py-4 font-semibold">Proof</th>
@@ -205,9 +208,9 @@ function AgentTopupApprovals() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-400">Loading...</td></tr>
+              <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-400">Loading...</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={8} className="px-5 py-10 text-center text-slate-400">No top-up requests found.</td></tr>
+              <tr><td colSpan={10} className="px-5 py-10 text-center text-slate-400">No top-up requests found.</td></tr>
             ) : (
               rows.map((row) => {
                 const isPending = (row.status || "Pending") === "Pending";
@@ -219,7 +222,12 @@ function AgentTopupApprovals() {
                       <div className="text-xs text-slate-500">@{row.agent_username}</div>
                     </td>
                     <td className="px-5 py-4">{row.method === "USDT" ? "USDT" : "Bank Transfer"}</td>
-                    <td className="px-5 py-4 font-semibold text-slate-800">{money(row.amount)}</td>
+                    <td className="px-5 py-4 font-semibold text-slate-800">
+                      {money(row.amount)}
+                      {row.usdt_amount && <div className="text-xs font-normal text-slate-500">{Number(row.usdt_amount)} USDT × ₹{Number(row.usdt_rate)}</div>}
+                    </td>
+                    <td className="px-5 py-4">{money(row.commission_amount ?? (Number(row.amount) * Number(row.agent_commission_percent || 0) / 100))}<div className="text-xs text-slate-500">{Number(row.commission_percent ?? row.agent_commission_percent ?? 0)}%</div></td>
+                    <td className="px-5 py-4 font-semibold">{money(row.final_amount ?? (Number(row.amount) * (1 + Number(row.agent_commission_percent || 0) / 100)))}</td>
                     <td className="px-5 py-4 font-mono text-xs break-all">
                       {row.method === "USDT" ? row.usdt_tx_hash : row.bank_utr}
                     </td>
@@ -240,6 +248,12 @@ function AgentTopupApprovals() {
                               setReasonMap((prev) => ({ ...prev, [row.id]: e.target.value }))
                             }
                             placeholder="Rejection reason (required to reject)..."
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
+                          />
+                          <input
+                            value={notesMap[row.id] || ""}
+                            onChange={(e) => setNotesMap((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                            placeholder="Approval notes (optional)..."
                             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
                           />
                           <div className="flex gap-2">

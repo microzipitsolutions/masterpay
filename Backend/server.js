@@ -1316,6 +1316,12 @@ async function initializeDatabase() {
         created_by_admin_id INTEGER REFERENCES admins(id),
         method VARCHAR(20) NOT NULL,
         amount NUMERIC(18,2) NOT NULL CHECK (amount > 0),
+        usdt_amount NUMERIC(18,6),
+        usdt_rate NUMERIC(18,6),
+        commission_percent NUMERIC(8,4),
+        commission_amount NUMERIC(18,2),
+        final_amount NUMERIC(18,2),
+        notes TEXT,
         usdt_wallet_address VARCHAR(255),
         usdt_network VARCHAR(50),
         usdt_tx_hash VARCHAR(150),
@@ -1333,9 +1339,16 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await pool.query(`ALTER TABLE agent_topup_requests ADD COLUMN IF NOT EXISTS usdt_amount NUMERIC(18,6);`);
+    await pool.query(`ALTER TABLE agent_topup_requests ADD COLUMN IF NOT EXISTS usdt_rate NUMERIC(18,6);`);
+    await pool.query(`ALTER TABLE agent_topup_requests ADD COLUMN IF NOT EXISTS commission_percent NUMERIC(8,4);`);
+    await pool.query(`ALTER TABLE agent_topup_requests ADD COLUMN IF NOT EXISTS commission_amount NUMERIC(18,2);`);
+    await pool.query(`ALTER TABLE agent_topup_requests ADD COLUMN IF NOT EXISTS final_amount NUMERIC(18,2);`);
+    await pool.query(`ALTER TABLE agent_topup_requests ADD COLUMN IF NOT EXISTS notes TEXT;`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_agtr_agent_status ON agent_topup_requests(agent_id, status);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_agtr_admin_status ON agent_topup_requests(created_by_admin_id, status);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_agtr_client_status ON agent_topup_requests(client_id, status);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_agent_topups_admin_ledger ON agent_topup_requests(created_by_admin_id, submitted_at DESC, status);`);
 
     // Per-tenant singleton config for where agents should send top-up funds.
     // client_id is nullable (legacy admins can have client_id IS NULL) and falls
@@ -1348,6 +1361,7 @@ async function initializeDatabase() {
         usdt_wallet_address VARCHAR(255),
         usdt_network VARCHAR(50),
         usdt_label TEXT,
+        usdt_rate NUMERIC(18,6) NOT NULL DEFAULT 1 CHECK (usdt_rate > 0),
         bank_name VARCHAR(150),
         bank_account_number VARCHAR(100),
         bank_ifsc VARCHAR(100),
@@ -1369,6 +1383,7 @@ async function initializeDatabase() {
     // (unauthenticated) file, unlike agent top-up proofs — a QR is meant to
     // be freely scannable by anyone paying, not sensitive evidence.
     await pool.query(`ALTER TABLE company_wallet_configs ADD COLUMN IF NOT EXISTS usdt_qr_file_path TEXT;`);
+    await pool.query(`ALTER TABLE company_wallet_configs ADD COLUMN IF NOT EXISTS usdt_rate NUMERIC(18,6) NOT NULL DEFAULT 1;`);
 
     // Platform-wide maintenance flag — a fixed single row (id=1), not per-tenant
     // like company_wallet_configs. When enabled, blocks new non-super-admin
@@ -2824,15 +2839,15 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ─── PUBLIC: SELF-SERVICE SIGNUP (Agent / Merchant only) ─────────────────────
+// ─── PUBLIC: SELF-SERVICE SIGNUP (Agent only) ────────────────────────────────
 // Never allows role "admin" or "super-admin" — that is the hard security
 // control here. The new account is associated with the single default Admin
 // (and that admin's tenant), matching "one default Admin for now".
 app.post("/api/signup", async (req, res) => {
   try {
     const role = String(req.body?.role || "").trim().toLowerCase();
-    if (role !== "agent" && role !== "merchant") {
-      return res.status(400).json({ message: "role must be 'agent' or 'merchant'" });
+    if (role !== "agent") {
+      return res.status(400).json({ message: "Only Agent signup is available" });
     }
 
     const name = cleanText(req.body?.name);
@@ -2859,30 +2874,15 @@ app.post("/api/signup", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    if (role === "agent") {
-      const result = await pool.query(
+    const result = await pool.query(
         `INSERT INTO agents (name, commission_percent, max_payment_limit, min_transaction_amount, created_by_admin_id, username, password, plain_password, is_active, client_id)
          VALUES ($1, 0, 0, 0, $2, $3, $4, NULL, true, $5)
          RETURNING id, name, username`,
         [name, adminId, username, hashedPassword, clientId],
       );
-      const agent = result.rows[0];
-      await ensureAgentWallet(agent.id);
-      return res.status(201).json({ id: agent.id, role: "agent", username: agent.username });
-    }
-
-    // role === "merchant": every merchant is directly API-ready (token/api_key
-    // moved here from the old merchants table — see authenticateMerchantApiKey).
-    const token = crypto.randomBytes(32).toString("hex");
-    const apiKey = crypto.randomBytes(32).toString("hex");
-    const result = await pool.query(
-      `INSERT INTO merchants (name, commission_percent, agent_id, created_by_admin_id, username, password, plain_password, is_active, client_id, token, api_key)
-       VALUES ($1, 0, NULL, $2, $3, $4, NULL, true, $5, $6, $7)
-       RETURNING id, name, username`,
-      [name, adminId, username, hashedPassword, clientId, token, apiKey],
-    );
-    const merchant = result.rows[0];
-    return res.status(201).json({ id: merchant.id, role: "merchant", username: merchant.username });
+    const agent = result.rows[0];
+    await ensureAgentWallet(agent.id);
+    return res.status(201).json({ id: agent.id, role: "agent", username: agent.username });
   } catch (error) {
     if (error.statusCode) {
       return res.status(error.statusCode).json({ message: error.message });
@@ -4639,6 +4639,8 @@ app.post("/api/agents", async (req, res) => {
       return res
         .status(400)
         .json({ message: "Name, username and password are required" });
+    if (!Number.isFinite(Number(commission_percent || 0)) || Number(commission_percent || 0) < 0 || Number(commission_percent || 0) > 100)
+      return res.status(400).json({ message: "Commission percentage must be between 0 and 100" });
     if (
       Number(max_payment_limit || 0) < 0 ||
       Number(min_transaction_amount || 0) < 0
@@ -4691,6 +4693,10 @@ app.put("/api/agents/:id", async (req, res) => {
 
     const finalCommissionPercent =
       commission_percent ?? commission_charge_percent ?? 0;
+
+    if (!Number.isFinite(Number(finalCommissionPercent)) || Number(finalCommissionPercent) < 0 || Number(finalCommissionPercent) > 100) {
+      return res.status(400).json({ message: "Commission percentage must be between 0 and 100" });
+    }
 
     if (
       Number(max_available_limit || 0) < 0 ||
@@ -4999,8 +5005,8 @@ app.post("/api/agent/topups", uploadTopupProof, async (req, res) => {
     if (!["USDT", "BANK_TRANSFER"].includes(cleanMethod))
       return res.status(400).json({ message: "method must be USDT or BANK_TRANSFER" });
 
-    const numericAmount = Number(req.body.amount);
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0)
+    const submittedAmount = Number(req.body.amount);
+    if (!Number.isFinite(submittedAmount) || submittedAmount <= 0)
       return res.status(400).json({ message: "Amount must be greater than 0" });
 
     let txRef = "";
@@ -5034,12 +5040,22 @@ app.post("/api/agent/topups", uploadTopupProof, async (req, res) => {
       });
     }
 
+    const activeUsdtRate = Number(config.usdt_rate);
+    if (cleanMethod === "USDT" && (!Number.isFinite(activeUsdtRate) || activeUsdtRate <= 0)) {
+      return res.status(400).json({ message: "USDT rate is not configured for your account yet" });
+    }
+    // `amount` remains the canonical INR top-up value for backward-compatible
+    // reports and wallet code. USDT input and rate are immutable audit snapshots.
+    const numericAmount = cleanMethod === "USDT"
+      ? Math.round(submittedAmount * activeUsdtRate * 100) / 100
+      : Math.round(submittedAmount * 100) / 100;
+
     const result = await pool.query(
       `INSERT INTO agent_topup_requests
-        (agent_id, client_id, created_by_admin_id, method, amount,
+        (agent_id, client_id, created_by_admin_id, method, amount, usdt_amount, usdt_rate,
          usdt_wallet_address, usdt_network, usdt_tx_hash,
          bank_name, bank_account_number, bank_ifsc, bank_utr, proof_file_path)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
         agentId,
@@ -5047,6 +5063,8 @@ app.post("/api/agent/topups", uploadTopupProof, async (req, res) => {
         scope.adminId,
         cleanMethod,
         numericAmount,
+        cleanMethod === "USDT" ? submittedAmount : null,
+        cleanMethod === "USDT" ? activeUsdtRate : null,
         cleanMethod === "USDT" ? config.usdt_wallet_address : null,
         cleanMethod === "USDT" ? config.usdt_network : null,
         cleanMethod === "USDT" ? txRef : null,
@@ -5208,7 +5226,7 @@ app.get("/api/admin/agent-topups", async (req, res) => {
 
     const countResult = await pool.query(`SELECT COUNT(*) ${baseFrom}`, values);
     const rowsResult = await pool.query(
-      `SELECT ot.*, o.name AS agent_name, o.username AS agent_username
+      `SELECT ot.*, o.name AS agent_name, o.username AS agent_username, o.commission_percent AS agent_commission_percent
        ${baseFrom} ORDER BY ot.id DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
       [...values, limit, offset],
     );
@@ -5218,6 +5236,65 @@ app.get("/api/admin/agent-topups", async (req, res) => {
   } catch (error) {
     console.error("Admin agent-topups list error:", error);
     res.status(500).json({ message: "Could not load top-up requests" });
+  }
+});
+
+// Audited Admin ledger derived from top-up requests. It intentionally uses
+// stored rate/commission snapshots rather than recalculating historical rows.
+app.get("/api/admin/ledger", async (req, res) => {
+  try {
+    const auth = getAuthUser(req);
+    if (!["admin", "super-admin"].includes(auth.role))
+      return res.status(403).json({ message: "Forbidden" });
+
+    const { status, agent_id, from, to } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const values = [];
+    const conditions = [];
+    if (auth.role === "admin") {
+      conditions.push(`t.created_by_admin_id = $${values.length + 1}`);
+      values.push(Number(auth.userId));
+    } else if (req.query.admin_id) {
+      conditions.push(`t.created_by_admin_id = $${values.length + 1}`);
+      values.push(Number(req.query.admin_id));
+    }
+    if (agent_id) { conditions.push(`t.agent_id = $${values.length + 1}`); values.push(Number(agent_id)); }
+    if (status) { conditions.push(`t.status = $${values.length + 1}`); values.push(status); }
+    if (from) { conditions.push(`DATE(t.submitted_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') >= $${values.length + 1}`); values.push(from); }
+    if (to) { conditions.push(`DATE(t.submitted_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') <= $${values.length + 1}`); values.push(to); }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const select = `SELECT t.*, a.name AS agent_name, a.username AS agent_username,
+      a.name AS receive_from, a.name AS pay_to,
+      COALESCE(t.final_amount, t.amount) AS payable_receivable_amount,
+      COALESCE(t.usdt_tx_hash, t.bank_utr, 'TOPUP-' || t.id) AS transaction_reference
+      FROM agent_topup_requests t JOIN agents a ON a.id = t.agent_id ${where}`;
+
+    if (req.query.export === "xlsx") {
+      const rows = (await pool.query(`${select} ORDER BY t.submitted_at DESC`, values)).rows;
+      const data = rows.map((r) => ({
+        Date: r.submitted_at, Agent: r.agent_name, "Receive From": r.receive_from,
+        "Pay To": r.pay_to, "Top-up Amount": Number(r.amount),
+        "Commission Amount": Number(r.commission_amount || 0),
+        "Final Amount": Number(r.payable_receivable_amount), Reference: r.transaction_reference,
+        Status: r.status, Remarks: r.notes || r.rejection_reason || "",
+      }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), "Admin Ledger");
+      res.setHeader("Content-Disposition", `attachment; filename="admin-ledger-${Date.now()}.xlsx"`);
+      res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      return res.send(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+    }
+
+    const total = Number((await pool.query(`SELECT COUNT(*) FROM agent_topup_requests t ${where}`, values)).rows[0].count);
+    const rows = await pool.query(
+      `${select} ORDER BY t.submitted_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+      [...values, limit, (page - 1) * limit],
+    );
+    res.json({ data: rows.rows, page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) });
+  } catch (error) {
+    console.error("Admin ledger error:", error);
+    res.status(500).json({ message: "Could not load admin ledger" });
   }
 });
 
@@ -5264,8 +5341,20 @@ app.put("/api/admin/agent-topups/:id/approve", async (req, res) => {
       await client.query("ROLLBACK");
       return res.status(500).json({ message: "Wallet not initialized for this agent" });
     }
+    const agentResult = await client.query(
+      `SELECT commission_percent FROM agents WHERE id = $1`,
+      [topup.agent_id],
+    );
+    const commissionPercent = Number(agentResult.rows[0]?.commission_percent || 0);
+    if (!Number.isFinite(commissionPercent) || commissionPercent < 0 || commissionPercent > 100) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Agent commission must be between 0 and 100" });
+    }
+    const topupAmount = Number(topup.amount);
+    const commissionAmount = Math.round(topupAmount * commissionPercent) / 100;
+    const finalAmount = Math.round((topupAmount + commissionAmount) * 100) / 100;
     const wallet = walletResult.rows[0];
-    const newBalance = Number(wallet.available_balance) + Number(topup.amount);
+    const newBalance = Number(wallet.available_balance) + finalAmount;
 
     await client.query(
       `UPDATE agent_wallets SET available_balance = $1, updated_at = NOW() WHERE id = $2`,
@@ -5276,14 +5365,16 @@ app.put("/api/admin/agent-topups/:id/approve", async (req, res) => {
       `INSERT INTO agent_wallet_ledger
         (agent_id, entry_type, amount, balance_after, reference_type, reference_id, created_by_role, created_by_id)
        VALUES ($1,'TOPUP_CREDIT',$2,$3,'topup_request',$4,$5,$6)`,
-      [topup.agent_id, Number(topup.amount), newBalance, topup.id, auth.role, Number(auth.userId)],
+      [topup.agent_id, finalAmount, newBalance, topup.id, auth.role, Number(auth.userId)],
     );
 
     const updated = await client.query(
       `UPDATE agent_topup_requests
-       SET status = 'Approved', reviewed_by_role = $1, reviewed_by_id = $2, reviewed_at = NOW()
+       SET status = 'Approved', reviewed_by_role = $1, reviewed_by_id = $2, reviewed_at = NOW(),
+           commission_percent = $4, commission_amount = $5, final_amount = $6,
+           notes = COALESCE(NULLIF($7, ''), notes)
        WHERE id = $3 RETURNING *`,
-      [auth.role, Number(auth.userId), topup.id],
+      [auth.role, Number(auth.userId), topup.id, commissionPercent, commissionAmount, finalAmount, cleanText(req.body?.notes)],
     );
 
     await client.query("COMMIT");
@@ -5434,8 +5525,13 @@ app.put("/api/admin/company-wallet-config", uploadCompanyQr, async (req, res) =>
     const {
       usdt_wallet_address, usdt_network, usdt_label,
       bank_name, bank_account_number, bank_ifsc, bank_account_holder_name, bank_upi_id,
-      is_active,
+      is_active, usdt_rate,
     } = req.body;
+
+    const numericUsdtRate = Number(usdt_rate);
+    if (!Number.isFinite(numericUsdtRate) || numericUsdtRate <= 0) {
+      return res.status(400).json({ message: "USDT rate must be greater than 0" });
+    }
 
     // UPI ID is optional (no QR is shown if unset — see findCompanyWalletConfig
     // consumers), but if one is provided it must pass format validation before
@@ -5556,7 +5652,11 @@ app.put("/api/admin/company-wallet-config", uploadCompanyQr, async (req, res) =>
       );
     }
 
-    res.json(result.rows[0]);
+    const saved = await pool.query(
+      `UPDATE company_wallet_configs SET usdt_rate = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [numericUsdtRate, result.rows[0].id],
+    );
+    res.json(saved.rows[0]);
   } catch (error) {
     console.error("Company wallet config upsert error:", error);
     res.status(500).json({ message: "Could not save deposit details" });

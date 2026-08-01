@@ -192,7 +192,9 @@ function TopUpHistory() {
               <tr className="border-b border-gray-200 bg-slate-50">
                 <th className="text-left px-5 py-3 font-bold">ID</th>
                 <th className="text-left px-5 py-3 font-bold">Method</th>
-                <th className="text-left px-5 py-3 font-bold">Amount</th>
+                <th className="text-left px-5 py-3 font-bold">Top-Up Amount</th>
+                <th className="text-left px-5 py-3 font-bold">Commission</th>
+                <th className="text-left px-5 py-3 font-bold">Final Credit</th>
                 <th className="text-left px-5 py-3 font-bold">Reference</th>
                 <th className="text-left px-5 py-3 font-bold">Submitted</th>
                 <th className="text-left px-5 py-3 font-bold">Status</th>
@@ -202,15 +204,17 @@ function TopUpHistory() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">Loading...</td></tr>
+                <tr><td colSpan={10} className="text-center py-8 text-slate-400">Loading...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">No top-up requests yet</td></tr>
+                <tr><td colSpan={10} className="text-center py-8 text-slate-400">No top-up requests yet</td></tr>
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="border-b border-gray-100">
                     <td className="px-5 py-4">{row.id}</td>
                     <td className="px-5 py-4">{row.method === "USDT" ? "USDT" : "Bank Transfer"}</td>
-                    <td className="px-5 py-4 font-semibold">{money(row.amount)}</td>
+                    <td className="px-5 py-4 font-semibold">{money(row.amount)}{row.usdt_amount && <div className="text-xs font-normal text-slate-500">{Number(row.usdt_amount)} USDT × ₹{Number(row.usdt_rate)}</div>}</td>
+                    <td className="px-5 py-4">{money(row.commission_amount)}{row.commission_percent != null && <div className="text-xs text-slate-500">{Number(row.commission_percent)}%</div>}</td>
+                    <td className="px-5 py-4 font-semibold">{money(row.final_amount || row.amount)}</td>
                     <td className="px-5 py-4 font-mono text-xs break-words [overflow-wrap:anywhere] max-w-[220px]">
                       {row.method === "USDT" ? row.usdt_tx_hash : row.bank_utr}
                     </td>
