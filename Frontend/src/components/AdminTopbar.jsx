@@ -1,6 +1,7 @@
 import { Menu, UserRound, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clearSession, getCurrentSession } from "../api";
+import AdminAlertsBell from "./AdminAlertsBell";
 
 function AdminTopbar({ sidebarOpen, setSidebarOpen }) {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const handleLogout = () => {
       </button>
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <AdminAlertsBell />
         <div className="hidden sm:flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-2 bg-white">
           <div className="h-8 w-8 rounded-full bg-[#eef3fb] flex items-center justify-center text-[#2B7DE9]">
             <UserRound size={18} />

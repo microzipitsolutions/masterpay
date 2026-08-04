@@ -7,6 +7,7 @@ import {
 import { clearSession, getCurrentSession } from "../api";
 import Logo from "../components/Logo";
 import { useBranding } from "../context/BrandingContext";
+import AdminAlertsBell from "../components/AdminAlertsBell";
 
 // Grouped sidebar sections — existing routes are unchanged, just reorganized
 // under clearer headings (Overview / Users & Clients / Money Movement /
@@ -37,6 +38,7 @@ const NAV_GROUPS = [
     section: "Operations",
     items: [
       { to: "/superadmin/agent-topups", label: "Agent Top-Ups", icon: Wallet },
+      { to: "/superadmin/agent-accounts", label: "Agent Bank Details", icon: Landmark },
       { to: "/superadmin/company-wallet-configs", label: "Deposit Configs", icon: Landmark },
       { to: "/superadmin/admin-ledger", label: "Admin Ledger", icon: Wallet },
     ],
@@ -159,6 +161,7 @@ export default function SuperAdminLayout({ children }) {
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
           <div className="flex items-center gap-3">
+            <AdminAlertsBell />
             <div className="hidden sm:block text-right">
               <div className="text-sm font-semibold text-slate-900">{session.username}</div>
               <div className="text-xs text-slate-500">Super Admin</div>

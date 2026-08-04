@@ -1949,6 +1949,45 @@ async function initializeDatabase() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_alert_logs_recipient ON alert_logs(recipient, created_at DESC);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_alert_logs_related ON alert_logs(related_type, related_id);`);
 
+    // ─── IN-APP ADMIN ALERTS ─────────────────────────────────────────────────
+    // A separate, minimal notification feed for Admin/Super-admin — distinct
+    // from alert_logs above (which only audits outbound *email* sends). Each
+    // row is a discrete, persisted alert an Admin can see immediately in the
+    // topbar bell without opening the underlying list page. admin_id NULL
+    // means tenant-wide (visible to every admin under that client_id);
+    // client_id NULL means platform-wide (super-admin only).
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_alerts (
+        id SERIAL PRIMARY KEY,
+        alert_type VARCHAR(40) NOT NULL,
+        related_type VARCHAR(30) NOT NULL,
+        related_id INTEGER NOT NULL,
+        admin_id INTEGER REFERENCES admins(id),
+        client_id INTEGER REFERENCES clients(id),
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        link_url TEXT,
+        agent_name VARCHAR(150),
+        usdt_amount NUMERIC(18,6),
+        inr_amount NUMERIC(18,2),
+        usdt_rate NUMERIC(18,6),
+        commission_amount NUMERIC(18,2),
+        reference VARCHAR(100),
+        is_read BOOLEAN NOT NULL DEFAULT false,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    // Idempotency guarantee for alert creation: INSERT ... ON CONFLICT (alert_type,
+    // related_type, related_id) DO NOTHING means a retried/duplicated request for
+    // the same source row (e.g. the same agent_topup_requests.id) can never
+    // produce a second alert.
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_alerts_related
+        ON admin_alerts (alert_type, related_type, related_id);
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_alerts_unread ON admin_alerts(is_read, created_at DESC);`);
+
     // Dedup/claim columns — a single atomic `UPDATE ... WHERE x_sent_at IS
     // NULL RETURNING *` is what guarantees at most one dispute alert per
     // transaction/withdrawal and at most one initial overdue-UTR alert per
@@ -1959,6 +1998,56 @@ async function initializeDatabase() {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_transactions_utr_submitted_overdue
         ON transactions(utr_submitted_at) WHERE status = 'UTR Submitted';
+    `);
+
+    // ─── AGENT COMMISSION SNAPSHOT (Pay-In) ─────────────────────────────────
+    // Historical bug: dashboards/reports computed agent commission on Approved
+    // Pay-Ins live from agents.commission_percent, so editing an agent's rate
+    // silently rewrote every past period's totals. Mirrors the pattern already
+    // used correctly for agent top-ups (commission frozen on
+    // agent_topup_requests at approval time) — freeze it on the transaction
+    // itself the moment it becomes Approved, via trigger below, so it can
+    // never be recomputed from a rate that changes later.
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS agent_commission_percent NUMERIC(8,4);`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS agent_commission_amount NUMERIC(18,2);`);
+
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION freeze_agent_commission_on_approval()
+      RETURNS TRIGGER AS $$
+      DECLARE
+        rate NUMERIC;
+      BEGIN
+        IF NEW.status = 'Approved' AND (OLD.status IS DISTINCT FROM 'Approved') AND NEW.agent_id IS NOT NULL THEN
+          SELECT commission_percent INTO rate FROM agents WHERE id = NEW.agent_id;
+          NEW.agent_commission_percent := COALESCE(rate, 0);
+          NEW.agent_commission_amount := ROUND(NEW.amount * COALESCE(rate, 0) / 100.0, 2);
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    await pool.query(`DROP TRIGGER IF EXISTS trg_freeze_agent_commission ON transactions;`);
+    await pool.query(`
+      CREATE TRIGGER trg_freeze_agent_commission
+      BEFORE UPDATE ON transactions
+      FOR EACH ROW
+      EXECUTE FUNCTION freeze_agent_commission_on_approval();
+    `);
+
+    // One-time, idempotent backfill: transactions already Approved before this
+    // migration have no snapshot yet. Freeze them at the agent's *current*
+    // rate (the best available approximation — there is no historical rate
+    // table) so they stop drifting with future commission edits from this
+    // point on. The WHERE ... IS NULL guard makes this a no-op on every boot
+    // after the first.
+    await pool.query(`
+      UPDATE transactions t
+      SET agent_commission_percent = COALESCE(a.commission_percent, 0),
+          agent_commission_amount = ROUND(t.amount * COALESCE(a.commission_percent, 0) / 100.0, 2)
+      FROM agents a
+      WHERE a.id = t.agent_id
+        AND t.status = 'Approved'
+        AND t.agent_commission_amount IS NULL;
     `);
 
     // ─── WITHDRAWAL SUBSYSTEM ────────────────────────────────────────────────
@@ -5076,10 +5165,112 @@ app.post("/api/agent/topups", uploadTopupProof, async (req, res) => {
       ],
     );
 
-    res.json(result.rows[0]);
+    const topup = result.rows[0];
+
+    // Immediate in-app Admin alert for the new request. Wrapped separately so a
+    // failure here (e.g. a transient DB hiccup) never rolls back or fails the
+    // top-up submission itself — same defensive posture as the existing
+    // email-alert dispatch calls elsewhere in this file. Idempotent via the
+    // uq_admin_alerts_related unique index (alert_type, related_type,
+    // related_id) — ON CONFLICT DO NOTHING means a retried request for the
+    // same topup row can never create a second alert.
+    try {
+      const agentRow = await pool.query(`SELECT name, commission_percent FROM agents WHERE id = $1`, [agentId]);
+      const agentName = agentRow.rows[0]?.name || `Agent #${agentId}`;
+      const commissionPercent = Number(agentRow.rows[0]?.commission_percent || 0);
+      const commissionPreview = Math.round(numericAmount * commissionPercent) / 100;
+      const title = `New top-up request from ${agentName}`;
+      const message = `${agentName} requested a top-up of ${
+        cleanMethod === "USDT" ? `${submittedAmount} USDT (₹${numericAmount} @ rate ${activeUsdtRate})` : `₹${numericAmount}`
+      } — est. commission ₹${commissionPreview}. Reference #${topup.id}.`;
+      await pool.query(
+        `INSERT INTO admin_alerts
+          (alert_type, related_type, related_id, admin_id, client_id, title, message, link_url,
+           agent_name, usdt_amount, inr_amount, usdt_rate, commission_amount, reference)
+         VALUES ('agent_topup_submitted','agent_topup_requests',$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         ON CONFLICT (alert_type, related_type, related_id) DO NOTHING`,
+        [
+          topup.id,
+          scope.adminId,
+          scope.clientId,
+          title,
+          message,
+          "/agent-topups?status=Pending",
+          agentName,
+          cleanMethod === "USDT" ? submittedAmount : null,
+          numericAmount,
+          cleanMethod === "USDT" ? activeUsdtRate : null,
+          commissionPreview,
+          String(topup.id),
+        ],
+      );
+    } catch (alertError) {
+      console.error("Admin alert creation error (agent topup):", alertError);
+    }
+
+    res.json(topup);
   } catch (error) {
     console.error("Agent topup submit error:", error);
     res.status(500).json({ message: "Could not submit top-up request" });
+  }
+});
+
+// ─── ADMIN IN-APP ALERTS ───────────────────────────────────────────────────
+// Admin sees their own tenant-scoped alerts (own admin_id, or tenant-wide rows
+// with admin_id NULL but matching client_id); Super-admin sees everything.
+// Mirrors the getClientId()/tenant-scoping convention used across this file.
+app.get("/api/admin/alerts", async (req, res) => {
+  try {
+    const auth = getAuthUser(req);
+    if (!["admin", "super-admin"].includes(auth.role))
+      return res.status(403).json({ message: "Forbidden" });
+
+    const conditions = [];
+    const values = [];
+    if (auth.role === "admin") {
+      const clientId = getClientId(auth);
+      if (clientId) {
+        conditions.push(`(admin_id = $${values.length + 1} OR client_id = $${values.length + 2})`);
+        values.push(Number(auth.userId), clientId);
+      } else {
+        conditions.push(`admin_id = $${values.length + 1}`);
+        values.push(Number(auth.userId));
+      }
+    }
+    if (req.query.unread === "true") conditions.push(`is_read = false`);
+
+    const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const result = await pool.query(
+      `SELECT * FROM admin_alerts ${where} ORDER BY created_at DESC LIMIT ${limit}`,
+      values,
+    );
+    const unreadCount = await pool.query(
+      `SELECT COUNT(*)::INT AS count FROM admin_alerts ${where ? where + " AND" : "WHERE"} is_read = false`,
+      values,
+    );
+    res.json({ data: result.rows, unread_count: unreadCount.rows[0].count });
+  } catch (error) {
+    console.error("Admin alerts fetch error:", error);
+    res.status(500).json({ message: "Could not load alerts" });
+  }
+});
+
+app.put("/api/admin/alerts/:id/read", async (req, res) => {
+  try {
+    const auth = getAuthUser(req);
+    if (!["admin", "super-admin"].includes(auth.role))
+      return res.status(403).json({ message: "Forbidden" });
+    const { id } = req.params;
+    const result = await pool.query(
+      `UPDATE admin_alerts SET is_read = true, read_at = NOW() WHERE id = $1 RETURNING *`,
+      [id],
+    );
+    if (result.rows.length === 0) return res.status(404).json({ message: "Alert not found" });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Admin alert mark-read error:", error);
+    res.status(500).json({ message: "Could not update alert" });
   }
 });
 
@@ -5896,13 +6087,18 @@ app.delete("/api/agent-accounts/:id", async (req, res) => {
     const userId = Number(auth.userId);
     const { id } = req.params;
 
-    // Ownership scope: agent can only delete their own account; admin theirs.
+    // Only Admin/Super Admin may delete an agent's bank details — an Agent
+    // can view/create/edit their own accounts but must go through Admin to
+    // have one removed. Enforced here (not just hidden in the UI) so a direct
+    // API call from an agent token is also rejected.
+    if (!["admin", "super-admin"].includes(role)) {
+      return res.status(403).json({ message: "Only Admin or Super Admin can delete agent bank details" });
+    }
+
+    // Ownership scope: admin can only delete accounts they created; super-admin unscoped.
     const vals = [id];
     let scope = "";
-    if (role === "agent") {
-      scope = ` AND agent_id = $2`;
-      vals.push(Number(auth.agentId || userId));
-    } else if (role === "admin") {
+    if (role === "admin") {
       scope = ` AND created_by_admin_id = $2`;
       vals.push(userId);
     }
@@ -8215,7 +8411,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const agentCommDate = addDateFilter("t", agentValues);
 
     const agentCommission = await pool.query(
-      `SELECT a.id, a.name, COALESCE(SUM(t.amount * (a.commission_percent / 100.0)), 0) AS amount
+      `SELECT a.id, a.name, COALESCE(SUM(COALESCE(t.agent_commission_amount, t.amount * (a.commission_percent / 100.0))), 0) AS amount
        FROM agents a
        LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${agentMerchantJoin} ${agentCommDate}
        WHERE a.created_by_admin_id = $1 ${agentFilter}
@@ -8397,7 +8593,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
         const dateFilter = addDateFilter("t", vals);
         result = await pool.query(
           `SELECT a.id, a.name,
-             COALESCE(SUM(t.amount * (a.commission_percent / 100.0)), 0) AS amount
+             COALESCE(SUM(COALESCE(t.agent_commission_amount, t.amount * (a.commission_percent / 100.0))), 0) AS amount
            FROM agents a
            LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY amount DESC`,
@@ -8682,11 +8878,16 @@ app.get("/api/merchant-dashboard", async (req, res) => {
     );
 
     // Agent commission on this merchant's approved payins — mirrors admin dashboard's
-    // agentCommission query scoped to a single merchant.
+    // agentCommission query scoped to a single merchant. LEFT JOIN (not INNER) so
+    // merchants with no assigned agent (transactions.agent_id IS NULL) still show
+    // up in this query instead of being silently excluded. Prefers the commission
+    // snapshot frozen on the transaction at approval time (see the
+    // agent_commission_amount trigger below); falls back to a live calc only for
+    // rows that predate that snapshot or have no agent.
     const agentCommissionResult = await pool.query(
-      `SELECT COALESCE(SUM(t.amount * (COALESCE(a.commission_percent, 0) / 100.0)), 0) AS agent_commission
+      `SELECT COALESCE(SUM(COALESCE(t.agent_commission_amount, t.amount * (COALESCE(a.commission_percent, 0) / 100.0))), 0) AS agent_commission
        FROM transactions t
-       JOIN agents a ON a.id = t.agent_id
+       LEFT JOIN agents a ON a.id = t.agent_id
        WHERE t.merchant_id = $1 AND t.status = 'Approved' ${transactionDateFilter}`,
       values,
     );

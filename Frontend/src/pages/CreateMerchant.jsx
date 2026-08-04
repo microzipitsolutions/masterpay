@@ -42,11 +42,6 @@ function CreateMerchant() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (form.agent_ids.length === 0) {
-      alert("Select at least one agent");
-      return;
-    }
-
     await api.post("/api/merchants", form);
 
     alert("Merchant created successfully");
@@ -93,7 +88,7 @@ function CreateMerchant() {
 
         <div>
           <label className="block mb-2 font-medium">
-            Assign Agents * <span className="text-sm font-normal text-gray-500">(payins balance across selected agents that still have available limit)</span>
+            Assign Agents <span className="text-sm font-normal text-gray-500">(optional — leave unassigned to manage this merchant directly from Admin; payins balance across selected agents that still have available limit)</span>
           </label>
           <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-300 p-2 space-y-1">
             {agents.length === 0 && (

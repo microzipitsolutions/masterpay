@@ -337,7 +337,6 @@ function Transactions() {
                 <th className="px-5 py-4">Amount</th>
                 <th className="px-5 py-4">UTR Number</th>
                 <th className="px-5 py-4">Agent</th>
-                <th className="px-5 py-4">merchant</th>
                 <th className="px-5 py-4">Bank Name</th>
                 <th className="px-5 py-4">Account Number</th>
                 <th className="px-5 py-4">Created Date</th>
@@ -350,13 +349,13 @@ function Transactions() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="px-5 py-8 text-slate-500">
+                  <td colSpan={10} className="px-5 py-8 text-slate-500">
                     Loading...
                   </td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-5 py-8 text-slate-500">
+                  <td colSpan={10} className="px-5 py-8 text-slate-500">
                     No records found.
                   </td>
                 </tr>
@@ -370,9 +369,6 @@ function Transactions() {
                     <td className="px-5 py-4">{money(item.amount)}</td>
                     <td className="px-5 py-4">{item.utr_number || "-"}</td>
                     <td className="px-5 py-4">{item.agent_name || "-"}</td>
-                    <td className="px-5 py-4">
-                      {item.merchant_name || "-"}
-                    </td>
                     <td className="px-5 py-4">{item.bank_name || "-"}</td>
                     <td className="px-5 py-4">
                       {item.account_number || "-"}
@@ -452,7 +448,6 @@ function Transactions() {
                   />
                 )}
                 <Row label="Agent" value={viewItem.agent_name || "-"} />
-                <Row label="merchant" value={viewItem.merchant_name || "-"} />
                 <Row label="Bank Name" value={viewItem.bank_name} />
                 <Row label="Account Number" value={viewItem.account_number} />
                 <Row label="Transaction Status" value={viewItem.status} />

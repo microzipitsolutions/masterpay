@@ -276,13 +276,14 @@ export default function MerchantWithdrawals() {
                 <th className="text-left px-4 py-3 font-bold">Destination</th>
                 <th className="text-left px-4 py-3 font-bold">UTR</th>
                 <th className="text-left px-4 py-3 font-bold">Created</th>
+                <th className="text-left px-4 py-3 font-bold">Cleared/Rejected</th>
                 <th className="text-left px-4 py-3 font-bold">Status</th>
                 <th className="text-right px-4 py-3 font-bold">Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="7" className="text-center py-8 text-slate-500">No withdrawals yet</td></tr>
+                <tr><td colSpan="8" className="text-center py-8 text-slate-500">No withdrawals yet</td></tr>
               ) : paged.map((w, index) => (
                 <tr key={w.id} className={`border-b border-slate-100 last:border-b-0 ${w.merchant_disputed_at ? "bg-orange-50/40" : ""}`}>
                   <td className="px-4 py-3 font-mono text-xs">{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
@@ -296,6 +297,7 @@ export default function MerchantWithdrawals() {
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{w.utr_number || "—"}</td>
                   <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.created_at)}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.cleared_or_rejected_date)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <StatusPill status={w.status} />

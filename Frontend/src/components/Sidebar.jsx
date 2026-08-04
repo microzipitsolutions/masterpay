@@ -114,6 +114,16 @@ function Sidebar() {
           Balance Tracking
         </Link>
 
+        {/* Top-Up Requests — promoted to top level for quick access */}
+        <Link
+          to="/agent-topups"
+          className={`block rounded-xl px-4 py-3 font-medium transition ${
+            isActive("/agent-topups") ? "bg-[#eef3fb] text-[#2B7DE9]" : "hover:bg-gray-100"
+          }`}
+        >
+          Top-Up Requests
+        </Link>
+
         {/* ── Users ─────────────────────────────────────────────
             Combines: Merchants, Agents, Users */}
         <div>
@@ -232,7 +242,6 @@ function Sidebar() {
           />
           {walletOpen && (
             <div className="ml-3 mt-1 space-y-1">
-              <Link to="/agent-topups" className={linkClass("/agent-topups")}>Approve Top-Ups</Link>
               <Link to="/company-wallet-config" className={linkClass("/company-wallet-config")}>Deposit Details</Link>
               <Link to="/admin-ledger" className={linkClass("/admin-ledger")}>Admin Ledger</Link>
             </div>

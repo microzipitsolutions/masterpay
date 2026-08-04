@@ -638,11 +638,6 @@ function Merchants() {
   const updateMerchant = async (e) => {
     e.preventDefault();
 
-    if (editForm.agent_ids.length === 0) {
-      alert("Select at least one agent");
-      return;
-    }
-
     await api.put(`/api/merchants/${editingMerchant.id}`, {
       name: editForm.name,
       commission_percent: editForm.commission_percent,
@@ -945,7 +940,7 @@ website: ${window.location.origin}/login`;
                 <label className="mb-2 block text-sm font-semibold text-[#101936]">
                   Assign Agents{" "}
                   <span className="font-normal text-slate-500">
-                    (payins balance across selected agents with available limit)
+                    (optional — leave unassigned to manage directly from Admin; payins balance across selected agents with available limit)
                   </span>
                 </label>
 

@@ -290,7 +290,8 @@ export default function Transactions() {
                 <th className="px-4 py-4 font-bold text-gray-900">Amount</th>
                 <th className="px-4 py-4 font-bold text-gray-900">UTR Number</th>
                 <th className="px-4 py-4 font-bold text-gray-900">Bank / Account</th>
-                <th className="px-4 py-4 font-bold text-gray-900">Date</th>
+                <th className="px-4 py-4 font-bold text-gray-900">Created Date</th>
+                <th className="px-4 py-4 font-bold text-gray-900">Approved/Reject Date</th>
                 <th className="px-4 py-4 font-bold text-gray-900">Status</th>
                 <th className="px-4 py-4 font-bold text-gray-900">Dispute</th>
                 <th className="px-4 py-4 font-bold text-gray-900 text-right">Action</th>
@@ -298,9 +299,9 @@ export default function Transactions() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="9" className="px-4 py-8 text-sm text-gray-500">Loading transactions...</td></tr>
+                <tr><td colSpan="10" className="px-4 py-8 text-sm text-gray-500">Loading transactions...</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan="9" className="px-4 py-8 text-sm text-gray-500">No transactions found.</td></tr>
+                <tr><td colSpan="10" className="px-4 py-8 text-sm text-gray-500">No transactions found.</td></tr>
               ) : paginated.map((item, index) => (
                 <tr
                   key={item.id}
@@ -321,6 +322,7 @@ export default function Transactions() {
                     {!item.bank_name && !item.account_number && !item.upi_id && "—"}
                   </td>
                   <td className="px-4 py-4 text-xs text-gray-600">{formatDate(item.created_at)}</td>
+                  <td className="px-4 py-4 text-xs text-gray-600">{formatDate(item.approved_or_reject_date)}</td>
                   <td className="px-4 py-4"><StatusPill status={item.status} /></td>
                   <td className="px-4 py-4">
                     <DisputeStatusPill ticket={disputesByPayinId[item.id]} />

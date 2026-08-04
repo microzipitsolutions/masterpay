@@ -588,7 +588,8 @@ function PayinTransactionList() {
                   "Bank Name",
                   "Account Number",
                   "Merchant Name",
-                  "merchant Name",
+                  "Created Date",
+                  "Approved/Reject Date",
                   "UTR Submitted Date",
                   "View All",
                   "Action",
@@ -606,13 +607,13 @@ function PayinTransactionList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="12" className="px-5 py-8 text-sm text-gray-500">
+                  <td colSpan="13" className="px-5 py-8 text-sm text-gray-500">
                     Loading payin transactions...
                   </td>
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="px-5 py-8 text-sm text-gray-500">
+                  <td colSpan="13" className="px-5 py-8 text-sm text-gray-500">
                     No payin transactions found.
                   </td>
                 </tr>
@@ -644,7 +645,10 @@ function PayinTransactionList() {
                       {row.merchant_name || "-"}
                     </td>
                     <td className="px-5 py-5 text-sm">
-                      {row.merchant_name || "-"}
+                      {formatDate(row.created_at)}
+                    </td>
+                    <td className="px-5 py-5 text-sm">
+                      {formatDate(row.approved_or_reject_date)}
                     </td>
                     <td className="px-5 py-5 text-sm">
                       {formatDate(row.utr_submitted_at)}

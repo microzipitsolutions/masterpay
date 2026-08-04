@@ -54,6 +54,7 @@ import CompanyWalletConfig from "./pages/CompanyWalletConfig";
 import AdminLedger from "./pages/AdminLedger";
 import SuperAdminLayout from "./layouts/SuperAdminLayout";
 import SuperAdminAgentTopups from "./pages/superadmin/AgentTopups";
+import SuperAdminAgentAccounts from "./pages/superadmin/AgentAccounts";
 import SuperAdminCompanyWalletConfigs from "./pages/superadmin/CompanyWalletConfigs";
 import HierarchyOverviewPage from "./pages/superadmin/HierarchyOverviewPage";
 import MaintenanceMode from "./pages/superadmin/MaintenanceMode";
@@ -315,6 +316,14 @@ function App() {
         element={
           <ProtectedUserRoute allowedRoles={["super-admin"]}>
             <SuperAdminAgentTopups />
+          </ProtectedUserRoute>
+        }
+      />
+      <Route
+        path="/superadmin/agent-accounts"
+        element={
+          <ProtectedUserRoute allowedRoles={["super-admin"]}>
+            <SuperAdminAgentAccounts />
           </ProtectedUserRoute>
         }
       />

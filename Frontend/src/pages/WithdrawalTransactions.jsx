@@ -130,12 +130,13 @@ export default function WithdrawalTransactions() {
               <th className="text-left px-4 py-3 font-bold">UTR</th>
               <th className="text-left px-4 py-3 font-bold">Agent</th>
               <th className="text-left px-4 py-3 font-bold">Created</th>
+              <th className="text-left px-4 py-3 font-bold">Approved/Rejected</th>
               <th className="text-left px-4 py-3 font-bold">Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan="8" className="text-center py-8 text-slate-500">No transactions</td></tr>
+              <tr><td colSpan="9" className="text-center py-8 text-slate-500">No transactions</td></tr>
             ) : filtered.map((w) => (
               <tr key={w.id} className={`border-b border-slate-100 last:border-b-0 ${w.merchant_disputed_at ? "bg-orange-50/50" : ""}`}>
                 <td className="px-4 py-3 font-mono text-xs">{w.id}</td>
@@ -172,6 +173,7 @@ export default function WithdrawalTransactions() {
                       : "—"}
                 </td>
                 <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.created_at)}</td>
+                <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.cleared_or_rejected_date)}</td>
                 <td className="px-4 py-3">
                   <span className="flex items-center gap-2">
                     <StatusPill status={w.status} />

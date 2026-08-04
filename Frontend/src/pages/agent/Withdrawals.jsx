@@ -1,7 +1,60 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Send } from "lucide-react";
+import { X, Send, Copy, Check } from "lucide-react";
 import AgentLayout from "../../layouts/AgentLayout";
 import api from "../../api";
+
+function CopyButton({ value }) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard?.writeText(String(value));
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title="Copy"
+      className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+    </button>
+  );
+}
+
+// Structured, agent-facing destination card. Only ever renders fields the API
+// already sends for this withdrawal (upi_id / account_name / bank_name /
+// account_number / ifsc_code) — no internal ids or DB-only fields — and hides
+// any field that is blank rather than showing an empty row.
+function DestinationCard({ w }) {
+  if (!w) return null;
+  const rows = w.transaction_type === "upi"
+    ? [{ label: "UPI ID", value: w.upi_id }]
+    : [
+        { label: "Account Holder Name", value: w.account_name },
+        { label: "Bank Name", value: w.bank_name },
+        { label: "Account Number", value: w.account_number, mono: true },
+        { label: "IFSC", value: w.ifsc_code, mono: true },
+      ];
+  const visible = rows.filter((r) => r.value);
+  if (visible.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        {w.transaction_type === "upi" ? "UPI Details" : "Bank Details"}
+      </div>
+      {visible.map((r) => (
+        <div key={r.label} className="flex items-center justify-between text-xs">
+          <span className="text-slate-500">{r.label}</span>
+          <span className="flex items-center font-semibold text-slate-800">
+            <span className={r.mono ? "font-mono" : ""}>{r.value}</span>
+            <CopyButton value={r.value} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function StatusPill({ status }) {
   const styles = {
@@ -86,43 +139,22 @@ export default function AgentWithdrawals() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-bold">ID</th>
-                <th className="text-left px-4 py-3 font-bold">Merchant</th>
                 <th className="text-left px-4 py-3 font-bold">Amount</th>
-                <th className="text-left px-4 py-3 font-bold">Destination</th>
                 <th className="text-left px-4 py-3 font-bold">UTR</th>
                 <th className="text-left px-4 py-3 font-bold">Agent</th>
                 <th className="text-left px-4 py-3 font-bold">Created</th>
+                <th className="text-left px-4 py-3 font-bold">Approved/Rejected</th>
                 <th className="text-left px-4 py-3 font-bold">Status</th>
                 <th className="text-right px-4 py-3 font-bold">Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="9" className="text-center py-8 text-slate-500">No transactions</td></tr>
+                <tr><td colSpan="8" className="text-center py-8 text-slate-500">No transactions</td></tr>
               ) : filtered.map((w) => (
                 <tr key={w.id} className="border-b border-slate-100 last:border-b-0">
                   <td className="px-4 py-3 font-mono text-xs">{w.id}</td>
-                  <td className="px-4 py-3">{w.merchant_name}</td>
                   <td className="px-4 py-3 font-semibold">₹{Number(w.amount).toLocaleString("en-IN")}</td>
-                  <td className="px-4 py-3 text-xs">
-                    {w.status === "pending" ? (
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                        {w.transaction_type} · hidden until picked
-                      </span>
-                    ) : w.transaction_type === "upi" ? (
-                      <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">UPI</div>
-                        <div className="font-mono text-slate-700">{w.upi_id || "—"}</div>
-                      </div>
-                    ) : (
-                      <div className="space-y-0.5 leading-tight">
-                        <div className="font-semibold text-slate-700">{w.account_name || "—"}</div>
-                        {w.bank_name && <div className="text-slate-500">{w.bank_name}</div>}
-                        <div className="font-mono text-slate-600">A/C {w.account_number || "—"}</div>
-                        <div className="font-mono text-slate-500">IFSC {w.ifsc_code || "—"}</div>
-                      </div>
-                    )}
-                  </td>
                   <td className="px-4 py-3 font-mono text-xs">{w.utr_number || "—"}</td>
                   <td className="px-4 py-3 text-xs">
                     {w.agent_name
@@ -132,6 +164,7 @@ export default function AgentWithdrawals() {
                         : "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.created_at)}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.cleared_or_rejected_date)}</td>
                   <td className="px-4 py-3"><StatusPill status={w.status} /></td>
                   <td className="px-4 py-3 text-right">
                     {w.status === "pending" && (
@@ -156,7 +189,6 @@ export default function AgentWithdrawals() {
               <h2 className="text-xl font-bold mb-2">Pick Transaction</h2>
               <p className="text-sm text-slate-600 mb-6">Are you sure you want to pick this transaction?</p>
               <div className="bg-slate-50 rounded-lg p-3 text-left text-xs space-y-1 mb-5">
-                <div><span className="text-slate-500">Merchant:</span> <strong>{pickConfirm.merchant_name}</strong></div>
                 <div><span className="text-slate-500">Amount:</span> <strong>₹{Number(pickConfirm.amount).toLocaleString("en-IN")}</strong></div>
                 <div><span className="text-slate-500">Type:</span> {pickConfirm.transaction_type}</div>
                 <div className="text-[10px] text-slate-400 italic pt-1">Destination details will be revealed after you pick.</div>
@@ -174,7 +206,10 @@ export default function AgentWithdrawals() {
             <form onSubmit={submitUtr} className="relative w-full max-w-md rounded-2xl bg-white p-6">
               <button type="button" onClick={() => setUtrModal(null)} className="absolute right-4 top-4 w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center"><X size={18} /></button>
               <h2 className="text-xl font-bold mb-2">Submit UTR</h2>
-              <p className="text-sm text-slate-600 mb-4">For ₹{Number(utrModal.amount).toLocaleString("en-IN")} to {utrModal.merchant_name}</p>
+              <p className="text-sm text-slate-600 mb-4">For ₹{Number(utrModal.amount).toLocaleString("en-IN")}</p>
+              <div className="mb-4">
+                <DestinationCard w={utrModal} />
+              </div>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">UTR Number</label>

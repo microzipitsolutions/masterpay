@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Pencil, X, Trash2 } from "lucide-react";
+import { Search, Pencil, X } from "lucide-react";
 import api from "../../api";
 import AgentLayout from "../../layouts/AgentLayout";
 
@@ -158,18 +158,6 @@ function Accounts() {
     }
   };
 
-  const handleDelete = async (item) => {
-    if (!window.confirm(`Delete account ${item.account_number || item.id}? This cannot be undone.`)) return;
-    try {
-      await api.delete(`/api/agent-accounts/${item.id}`);
-      alert("Account deleted successfully");
-      fetchAccounts();
-    } catch (error) {
-      console.error(error);
-      alert(error?.response?.data?.message || "Something went wrong while deleting the account");
-    }
-  };
-
   return (
     <AgentLayout>
       <div className="space-y-8">
@@ -262,13 +250,6 @@ function Accounts() {
                           className="w-9 h-9 rounded-full bg-[#eef3fb] text-[#2B7DE9] flex items-center justify-center"
                         >
                           <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item)}
-                          title="Delete"
-                          className="w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center"
-                        >
-                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
