@@ -118,7 +118,7 @@ function MoneyInOutChart() {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <h2 className="text-base font-bold text-slate-900 flex items-center">
+        <h2 className="text-base font-bold text-navy-900 flex items-center">
           Money In vs Money Out
           <MetricInfoTooltip formula="Money In = sum of Approved Pay-Ins per period. Money Out = sum of cleared Withdrawals + Approved Settlements per period." />
         </h2>
@@ -128,7 +128,7 @@ function MoneyInOutChart() {
               key={g}
               onClick={() => setGranularity(g)}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize ${
-                granularity === g ? "bg-[#2B7DE9] text-white" : "bg-slate-100 text-slate-600"
+                granularity === g ? "bg-[#1E88FF] text-white" : "bg-slate-100 text-slate-600"
               }`}
             >
               {g}

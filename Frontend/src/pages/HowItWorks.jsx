@@ -51,7 +51,7 @@ function FlowStep({ num, title, who, children }) {
     customer: "bg-pink-50 border-pink-200 text-pink-900",
     merchant: "bg-blue-50 border-blue-200 text-blue-900",
     agent: "bg-purple-50 border-purple-200 text-purple-900",
-    system: "bg-gray-50 border-gray-200 text-gray-900",
+    system: "bg-gray-50 border-slate-200 text-gray-900",
   };
   return (
     <div className={`relative rounded-2xl border p-5 ${colors[who]}`}>
@@ -84,7 +84,7 @@ function ActorCard({ icon: Icon, name, role, color }) {
 function SectionTitle({ children, subtitle }) {
   return (
     <div className="mb-8">
-      <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">{children}</h2>
+      <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900 mb-2">{children}</h2>
       {subtitle && <p className="text-slate-600">{subtitle}</p>}
     </div>
   );
@@ -136,7 +136,7 @@ function MockCheckoutPending() {
         <div className="px-4 py-3 border-t border-slate-100">
           <div className="text-[10px] font-semibold text-slate-700 mb-1">Enter UTR after payment</div>
           <div className="h-7 border border-slate-300 rounded bg-white"></div>
-          <button className="mt-2 w-full bg-indigo-600 text-white text-[10px] font-medium py-1.5 rounded">
+          <button className="mt-2 w-full brand-gradient text-white text-[10px] font-medium py-1.5 rounded">
             I have paid — Submit UTR
           </button>
         </div>
@@ -190,7 +190,7 @@ function MockCheckoutFailed() {
           <div className="border-t border-slate-100 pt-3">
             <div className="text-[10px] font-semibold text-slate-700 mb-1">Already paid? Enter correct UTR for manual review</div>
             <div className="h-7 border border-slate-300 rounded bg-white"></div>
-            <button className="mt-2 w-full bg-indigo-600 text-white text-[10px] font-medium py-1.5 rounded">
+            <button className="mt-2 w-full brand-gradient text-white text-[10px] font-medium py-1.5 rounded">
               Submit for manual review
             </button>
           </div>
@@ -356,7 +356,7 @@ export default function HowItWorks() {
   const [activeFlow, setActiveFlow] = useState("A");
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       {/* Hero */}
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">

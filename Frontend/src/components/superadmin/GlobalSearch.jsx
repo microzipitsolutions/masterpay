@@ -98,7 +98,7 @@ function GlobalSearch() {
           onChange={(e) => setQ(e.target.value)}
           onFocus={() => q.trim().length >= 2 && setOpen(true)}
           placeholder="Search users, UTR, txn ID..."
-          className="w-full h-9 rounded-lg border border-slate-300 pl-8 pr-8 text-sm outline-none focus:border-[#2B7DE9]"
+          className="w-full h-9 rounded-lg border border-slate-300 pl-8 pr-8 text-sm outline-none focus:border-[#1E88FF]"
         />
         {q && (
           <button onClick={() => { setQ(""); setResults(null); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">

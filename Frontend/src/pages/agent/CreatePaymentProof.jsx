@@ -92,13 +92,13 @@ function CreatePaymentProof() {
   return (
     <AgentLayout>
       <div className="flex justify-center pt-4 sm:pt-8 px-3 sm:px-0">
-        <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-4 sm:p-8 shadow-sm">
+        <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm">
           <h1 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold text-gray-950">
             Payment Proof Form
           </h1>
 
           {message && (
-            <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700">
+            <div className="mb-5 rounded-lg border border-slate-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700">
               {message}
             </div>
           )}
@@ -113,7 +113,7 @@ function CreatePaymentProof() {
                 onChange={(e) => setFormData({ ...formData, utr_number: e.target.value })}
                 placeholder="UTR Number"
                 required
-                className="mt-2 h-12 w-full rounded-lg border border-gray-300 px-4 outline-none focus:border-[#2B7DE9]"
+                className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -127,7 +127,7 @@ function CreatePaymentProof() {
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 placeholder="Amount"
                 required
-                className="mt-2 h-12 w-full rounded-lg border border-gray-300 px-4 outline-none focus:border-[#2B7DE9]"
+                className="mt-2 h-12 w-full rounded-lg border border-slate-200 px-4 outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -138,7 +138,7 @@ function CreatePaymentProof() {
               <select
                 value={formData.account_id}
                 onChange={handleAccountSelect}
-                className="mt-2 h-12 w-full rounded-lg border border-gray-300 bg-white px-4 outline-none focus:border-[#2B7DE9]"
+                className="mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 outline-none focus:border-[#1E88FF]"
               >
                 <option value="">
                   {fetching ? "Loading..." : "Any / blank — match by amount + UTR"}
@@ -154,7 +154,7 @@ function CreatePaymentProof() {
             </div>
 
             {selectedAccount && (
-              <div className="rounded-lg border border-[#dbe7f5] bg-[#eef3fb] px-4 py-3 text-sm text-[#2B7DE9]">
+              <div className="rounded-lg border border-[#dbe7f5] bg-[#e8f3ff] px-4 py-3 text-sm text-[#1E88FF]">
                 <div className="font-semibold mb-1">Selected Account</div>
                 <div>Bank: {selectedAccount.bank_name || "-"}</div>
                 <div>Account: {selectedAccount.account_number || "-"}</div>
@@ -167,7 +167,7 @@ function CreatePaymentProof() {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-[#2B7DE9] px-8 py-3 font-semibold text-white disabled:opacity-60"
+                className="rounded-lg bg-[#1E88FF] px-8 py-3 font-semibold text-white disabled:opacity-60"
               >
                 {loading ? "Checking..." : "Save Payment Proof"}
               </button>

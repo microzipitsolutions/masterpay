@@ -106,17 +106,17 @@ export default function MerchantTickets() {
   return (
     <MerchantLayout>
       <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Support Tickets</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Support Tickets</h1>
 
         {/* New ticket form */}
-        <form onSubmit={handleSubmit} className="rounded-2xl bg-white border border-gray-200 p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl bg-white border border-slate-200 p-6 space-y-4">
           <h2 className="text-base font-semibold text-slate-700">Open a New Ticket</h2>
           <div>
             <label className="block text-sm font-semibold mb-2">Subject</label>
             <input
               value={form.subject}
               onChange={(e) => setForm({ ...form, subject: e.target.value })}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
               placeholder="Enter ticket subject"
             />
           </div>
@@ -125,11 +125,11 @@ export default function MerchantTickets() {
             <textarea
               value={form.issue}
               onChange={(e) => setForm({ ...form, issue: e.target.value })}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm min-h-[100px]"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm min-h-[100px]"
               placeholder="Explain your issue"
             />
           </div>
-          <button disabled={loading} className="rounded-xl bg-[#2B7DE9] px-5 py-3 text-white font-semibold text-sm disabled:opacity-60">
+          <button disabled={loading} className="rounded-xl bg-[#1E88FF] px-5 py-3 text-white font-semibold text-sm disabled:opacity-60">
             {loading ? "Creating..." : "Submit Ticket"}
           </button>
         </form>
@@ -192,7 +192,7 @@ export default function MerchantTickets() {
             {hasDisputes && (
               <h2 className="text-lg font-bold text-slate-800 mb-3">General Tickets</h2>
             )}
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
               <table className="min-w-full text-sm text-left">
                 <thead className="border-b bg-slate-50">
                   <tr>

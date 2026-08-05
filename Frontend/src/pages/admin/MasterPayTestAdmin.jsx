@@ -32,7 +32,7 @@ const PI_STATUS = {
   Pending:         { cls: "bg-amber-100 text-amber-800 border-amber-200",    Icon: Clock,                label: "Pending" },
   "UTR Submitted": { cls: "bg-blue-100 text-blue-800 border-blue-200",       Icon: Timer,                label: "UTR Submitted" },
   Approved:        { cls: "bg-green-100 text-green-800 border-green-200",    Icon: CheckCircle2,         label: "Approved" },
-  Expired:         { cls: "bg-gray-100 text-gray-600 border-gray-200",       Icon: XCircle,              label: "Expired" },
+  Expired:         { cls: "bg-gray-100 text-gray-600 border-slate-200",       Icon: XCircle,              label: "Expired" },
   Failed:          { cls: "bg-red-100 text-red-800 border-red-200",          Icon: ShieldAlert,          label: "Failed" },
   Disputed:        { cls: "bg-purple-100 text-purple-800 border-purple-200", Icon: MessageCircleWarning, label: "Disputed" },
 };
@@ -93,8 +93,8 @@ function WithdrawalSection({ enabled }) {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-amber-600" />
             <span className="font-semibold text-gray-800">Pending Test Withdrawals</span>
@@ -145,7 +145,7 @@ function WithdrawalSection({ enabled }) {
                           <input type="text" value={utrInputs[row.transaction_id] || ""}
                             onChange={e => setUtrInputs(p => ({ ...p, [row.transaction_id]: e.target.value }))}
                             placeholder="auto-generated if blank"
-                            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-400" />
+                            className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-400" />
                         </div>
                         <div className="flex gap-2">
                           <button type="button" onClick={() => handleAction(row.transaction_id, "success")} disabled={!!isActioning}
@@ -174,14 +174,14 @@ function WithdrawalSection({ enabled }) {
       </div>
 
       {settled.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
             <CheckCircle2 size={16} className="text-green-600" />
             <span className="font-semibold text-gray-800">Withdrawal History</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[560px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-slate-200">
                 <tr>{["Transaction ID","Amount","Type","Status","UTR","Settled At",""].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-600">{h}</th>)}</tr>
               </thead>
               <tbody>
@@ -196,7 +196,7 @@ function WithdrawalSection({ enabled }) {
                       <td className="px-4 py-3 text-gray-500">{fmtDate(row.cleared_or_rejected_date)}</td>
                       <td className="px-4 py-3">
                         <button type="button" onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
-                          className="text-[#2B7DE9] hover:underline flex items-center gap-1">
+                          className="text-[#1E88FF] hover:underline flex items-center gap-1">
                           {expandedId === row.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />} More
                         </button>
                       </td>
@@ -262,8 +262,8 @@ function PayInSection({ enabled }) {
       </div>
 
       {/* Active PayIns — view-only */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-amber-600" />
             <span className="font-semibold text-gray-800">Active Test PayIns (Read-Only)</span>
@@ -287,7 +287,7 @@ function PayInSection({ enabled }) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[600px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-slate-200">
                 <tr>{["Ref","Amount","Status","Merchant","UTR Submitted","Created","Webhook"].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-600">{h}</th>)}</tr>
               </thead>
               <tbody>
@@ -310,14 +310,14 @@ function PayInSection({ enabled }) {
 
       {/* Settled PayIn history */}
       {settled.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
             <CheckCircle2 size={16} className="text-green-600" />
             <span className="font-semibold text-gray-800">PayIn History</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[600px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-slate-200">
                 <tr>{["Ref","Amount","Status","UTR","Settled At","Webhook",""].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-600">{h}</th>)}</tr>
               </thead>
               <tbody>
@@ -336,7 +336,7 @@ function PayInSection({ enabled }) {
                       </td>
                       <td className="px-4 py-3">
                         <button type="button" onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
-                          className="text-[#2B7DE9] hover:underline flex items-center gap-1">
+                          className="text-[#1E88FF] hover:underline flex items-center gap-1">
                           {expandedId === row.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />} More
                         </button>
                       </td>
@@ -435,14 +435,14 @@ export default function MasterPayTestAdmin() {
     <div className="max-w-5xl mx-auto space-y-5">
 
       {/* Header */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
               <FlaskConical size={22} className="text-amber-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Test Mode — Admin Panel</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight text-navy-900 mb-1">Test Mode — Admin Panel</h1>
               <p className="text-sm text-gray-500 leading-relaxed">
                 Add virtual balance for the test merchant (withdrawal testing) and view all test PayIn activity.
                 PayIn approvals, expiries, and failures are driven by the{" "}
@@ -471,16 +471,16 @@ export default function MasterPayTestAdmin() {
       </div>
 
       {/* Add test balance — always visible (applies to Withdrawal balance) */}
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
-          <Plus size={16} className="text-[#2B7DE9]" />
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
+          <Plus size={16} className="text-[#1E88FF]" />
           <span className="font-semibold text-gray-800">Add Test Withdrawal Balance</span>
         </div>
         <div className="p-5">
           {newBal !== null && (
-            <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+            <div className="mb-4 p-4 bg-gray-50 border border-slate-200 rounded-xl">
               <p className="text-xs text-gray-400 mb-0.5">Updated Test Balance</p>
-              <p className="text-2xl font-bold text-gray-900">₹{Number(newBal).toLocaleString("en-IN")}</p>
+              <p className="text-2xl font-extrabold tracking-tight text-navy-900">₹{Number(newBal).toLocaleString("en-IN")}</p>
             </div>
           )}
           <form onSubmit={handleAddBalance} className="flex gap-3 flex-wrap items-end">
@@ -488,10 +488,10 @@ export default function MasterPayTestAdmin() {
               <label className="block text-xs font-semibold text-gray-600 mb-1">Amount to Add (₹)</label>
               <input type="number" min="1" value={balAmt} onChange={e => setBalAmt(e.target.value)}
                 required placeholder="e.g. 5000"
-                className="w-48 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-48 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <button type="submit" disabled={balAdding || !balAmt}
-              className="bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2">
+              className="bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2">
               {balAdding ? <><Loader2 size={15} className="animate-spin" /> Adding…</> : "Add Balance"}
             </button>
           </form>
@@ -506,11 +506,11 @@ export default function MasterPayTestAdmin() {
       {/* Tab switcher */}
       <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
         <button type="button" onClick={() => setTab("payin")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "payin" ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "payin" ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
           <ArrowDownLeft size={16} /> PayIn Management
         </button>
         <button type="button" onClick={() => setTab("withdrawal")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "withdrawal" ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "withdrawal" ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
           <ArrowUpRight size={16} /> Withdrawal Management
         </button>
       </div>

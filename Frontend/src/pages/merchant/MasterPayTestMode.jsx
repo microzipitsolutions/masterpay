@@ -32,7 +32,7 @@ const PI_STATUS = {
   Pending:         { cls: "bg-amber-100 text-amber-800 border-amber-200",    Icon: Clock,                label: "Pending" },
   "UTR Submitted": { cls: "bg-blue-100 text-blue-800 border-blue-200",       Icon: Timer,                label: "UTR Submitted" },
   Approved:        { cls: "bg-green-100 text-green-800 border-green-200",    Icon: CheckCircle2,         label: "Approved" },
-  Expired:         { cls: "bg-gray-100 text-gray-600 border-gray-200",       Icon: XCircle,              label: "Expired" },
+  Expired:         { cls: "bg-gray-100 text-gray-600 border-slate-200",       Icon: XCircle,              label: "Expired" },
   Failed:          { cls: "bg-red-100 text-red-800 border-red-200",          Icon: ShieldAlert,          label: "Failed" },
   Disputed:        { cls: "bg-purple-100 text-purple-800 border-purple-200", Icon: MessageCircleWarning, label: "Disputed" },
 };
@@ -85,7 +85,7 @@ function CopyBtn({ text }) {
   return (
     <button type="button"
       onClick={() => { navigator.clipboard?.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-      className="text-xs text-gray-400 hover:text-[#2B7DE9] flex items-center gap-1">
+      className="text-xs text-gray-400 hover:text-[#1E88FF] flex items-center gap-1">
       <Copy size={11} />{copied ? "Copied" : "Copy"}
     </button>
   );
@@ -94,10 +94,10 @@ function CopyBtn({ text }) {
 // ── Section card wrapper ──────────────────────────────────────
 function SectionCard({ title, badge, children }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center justify-between gap-2">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Plus size={15} className="text-[#2B7DE9]" />
+          <Plus size={15} className="text-[#1E88FF]" />
           <span className="font-semibold text-gray-800">{title}</span>
         </div>
         {badge && (
@@ -155,14 +155,14 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Test Balance (Withdrawal)</p>
-          <p className="text-3xl font-bold text-gray-900">{money(balance)}</p>
+          <p className="text-3xl font-extrabold tracking-tight text-navy-900">{money(balance)}</p>
           <p className="text-xs text-gray-400 mt-1">Virtual funds added by your admin technician</p>
         </div>
         <button type="button" onClick={() => { onBalanceRefresh(); fetchHistory(); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
           <RefreshCw size={15} /> Refresh
         </button>
       </div>
@@ -171,7 +171,7 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
         <div className="flex gap-2 bg-gray-100 p-1 rounded-xl w-fit mb-5">
           {[["upi", "UPI"], ["account", "Bank Account"]].map(([t, label]) => (
             <button key={t} type="button" onClick={() => switchMode(t)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${txMode === t ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${txMode === t ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               {label}
             </button>
           ))}
@@ -180,31 +180,31 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Amount (₹) *</label>
             <input name="amount" type="number" min="1" value={form.amount} onChange={onChange} required
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           {txMode === "upi" ? (
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">UPI ID *</label>
               <input name="upi_id" type="text" value={form.upi_id} onChange={onChange} required placeholder="test@ybl"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           ) : (
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Account Name *</label>
                 <input name="account_name" type="text" value={form.account_name} onChange={onChange} required
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Account Number *</label>
                   <input name="account_number" type="text" value={form.account_number} onChange={onChange} required
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">IFSC Code *</label>
                   <input name="ifsc_code" type="text" value={form.ifsc_code} onChange={onChange} required
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
             </div>
@@ -213,12 +213,12 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
             <label className="block text-xs font-semibold text-gray-600 mb-1">Webhook URL (optional)</label>
             <input name="webhook_url" type="url" value={form.webhook_url} onChange={onChange}
               placeholder="https://your-domain.com/webhook"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Notes (optional)</label>
             <input name="notes" type="text" value={form.notes} onChange={onChange}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           {createMsg && (
             <div className={`rounded-xl border p-3 text-sm ${createMsg.ok ? "bg-green-50 border-green-200 text-green-800" : "bg-red-50 border-red-200 text-red-700"}`}>
@@ -232,14 +232,14 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
             </div>
           )}
           <button type="submit" disabled={creating}
-            className="w-full bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+            className="w-full bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
             {creating ? <><Loader2 size={15} className="animate-spin" /> Creating…</> : "Create Test Withdrawal"}
           </button>
         </form>
       </SectionCard>
 
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
           <span className="font-semibold text-gray-800">Withdrawal History</span>
           <button type="button" onClick={fetchHistory} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
             <RefreshCw size={13} /> Refresh
@@ -254,7 +254,7 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs min-w-[620px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-gray-50 border-b border-slate-200">
                 <tr>{["Transaction ID","Amount","Type","Status","UTR","Created",""].map(h => <th key={h} className="px-4 py-3 text-left font-bold text-gray-600">{h}</th>)}</tr>
               </thead>
               <tbody>
@@ -269,7 +269,7 @@ function WithdrawalSection({ balance, onBalanceRefresh }) {
                       <td className="px-4 py-3 text-gray-500">{fmtDate(row.created_at)}</td>
                       <td className="px-4 py-3">
                         <button type="button" onClick={() => setExpanded(expanded === row.id ? null : row.id)}
-                          className="text-[#2B7DE9] hover:underline flex items-center gap-1">
+                          className="text-[#1E88FF] hover:underline flex items-center gap-1">
                           {expanded === row.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Details
                         </button>
                       </td>
@@ -343,9 +343,9 @@ function ApiKeySection({ onKeyLoaded }) {
   const masked = apiKey ? apiKey.slice(0, 11) + "••••••••••••••••••••••••••••••••••••" : "";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
-        <Key size={14} className="text-[#2B7DE9]" />
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
+        <Key size={14} className="text-[#1E88FF]" />
         <span className="font-semibold text-gray-800">Test Mode API Key</span>
         <span className="ml-auto text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
           Test only
@@ -365,17 +365,17 @@ function ApiKeySection({ onKeyLoaded }) {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-2 bg-gray-50 border border-slate-200 rounded-xl px-4 py-3">
               <code className="flex-1 text-xs font-mono text-gray-800 break-all select-all">
                 {revealed ? apiKey : masked}
               </code>
               <button type="button" onClick={() => setRevealed(v => !v)}
                 title={revealed ? "Hide key" : "Show key"}
-                className="text-gray-400 hover:text-[#2B7DE9] flex-shrink-0 transition-colors">
+                className="text-gray-400 hover:text-[#1E88FF] flex-shrink-0 transition-colors">
                 {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
               <button type="button" onClick={copyKey}
-                className="text-gray-400 hover:text-[#2B7DE9] flex-shrink-0 flex items-center gap-1 text-xs transition-colors">
+                className="text-gray-400 hover:text-[#1E88FF] flex-shrink-0 flex items-center gap-1 text-xs transition-colors">
                 <Copy size={12} />{copied ? "Copied!" : "Copy"}
               </button>
             </div>
@@ -440,8 +440,8 @@ function CheckoutCard({ checkout, onUtrSubmitted, onDisputed }) {
   const bank   = MP_ACCOUNT;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-gradient-to-r from-[#2B7DE9] to-blue-500 px-6 py-4 text-white">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-gradient-to-r from-[#1E88FF] to-blue-500 px-6 py-4 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs opacity-75 mb-0.5">Virtual Test Checkout</p>
@@ -498,7 +498,7 @@ function CheckoutCard({ checkout, onUtrSubmitted, onDisputed }) {
               <div className={`flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border ${
                 verifySecs > 120 ? "bg-blue-50 border-blue-200 text-blue-800" :
                 verifySecs > 0   ? "bg-amber-50 border-amber-200 text-amber-800" :
-                "bg-gray-50 border-gray-200 text-gray-600"
+                "bg-gray-50 border-slate-200 text-gray-600"
               }`}>
                 <Timer size={14} />
                 {verifySecs > 0
@@ -518,16 +518,16 @@ function CheckoutCard({ checkout, onUtrSubmitted, onDisputed }) {
               <label className="block text-xs font-semibold text-gray-600 mb-1">UTR Number *</label>
               <input type="text" value={utr} onChange={e => setUtr(e.target.value)} required
                 placeholder={checkout.utr_number || "Bank transaction reference"}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Proof / Screenshot URL (optional)</label>
               <input type="text" value={proof} onChange={e => setProof(e.target.value)}
                 placeholder="https://…"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <button type="submit" disabled={submitting || !utr.trim()}
-              className="w-full bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
+              className="w-full bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
               {submitting ? <><Loader2 size={15} className="animate-spin" /> Submitting…</> : "Submit UTR"}
             </button>
             {submitMsg && (
@@ -547,7 +547,7 @@ function CheckoutCard({ checkout, onUtrSubmitted, onDisputed }) {
           </div>
         )}
         {status === "Expired" && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center space-y-1">
+          <div className="bg-gray-50 border border-slate-200 rounded-xl p-4 text-center space-y-1">
             <XCircle size={28} className="text-gray-400 mx-auto" />
             <p className="font-bold text-gray-700">Checkout Expired</p>
             <p className="text-xs text-gray-500">Webhook <code>payin.expired</code> fired. Create a new test PayIn to retry.</p>
@@ -566,7 +566,7 @@ function CheckoutCard({ checkout, onUtrSubmitted, onDisputed }) {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Your Actual UTR (disputed) *</label>
                 <input type="text" value={disputed} onChange={e => setDisputed(e.target.value)} required
                   placeholder="UTR from your bank statement"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 font-mono" />
               </div>
               <button type="submit" disabled={disputing || !disputed.trim()}
                 className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
@@ -706,9 +706,9 @@ function PayInSection() {
 
       {/* Create form */}
       {!checkout && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
-            <Plus size={15} className="text-[#2B7DE9]" />
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
+            <Plus size={15} className="text-[#1E88FF]" />
             <span className="font-semibold text-gray-800">Create Test PayIn</span>
             <span className="ml-auto text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full uppercase">
               Test data only
@@ -719,13 +719,13 @@ function PayInSection() {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Amount (₹) *</label>
                 <input name="amount" type="number" min="1" value={form.amount} onChange={onChange} required
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Merchant Order ID</label>
                 <input name="merchant_order_id" type="text" value={form.merchant_order_id} onChange={onChange}
                   placeholder="e.g. ORD-001"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -733,32 +733,32 @@ function PayInSection() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Customer Name</label>
                 <input name="customer_name" type="text" value={form.customer_name} onChange={onChange}
                   placeholder="Test Customer"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Customer Mobile</label>
                 <input name="customer_mobile" type="text" value={form.customer_mobile} onChange={onChange}
                   placeholder="9876543210"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Webhook URL</label>
               <input name="webhook_url" type="url" value={form.webhook_url} onChange={onChange}
                 placeholder="https://your-domain.com/webhook"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Redirect URL</label>
               <input name="redirect_url" type="url" value={form.redirect_url} onChange={onChange}
                 placeholder="https://your-domain.com/payment-complete"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             {createErr && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{createErr}</div>
             )}
             <button type="submit" disabled={creating || !form.amount}
-              className="w-full bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
+              className="w-full bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2">
               {creating ? <><Loader2 size={15} className="animate-spin" /> Creating…</> : <>
                 <Plus size={15} /> Create Test PayIn
               </>}
@@ -774,7 +774,7 @@ function PayInSection() {
             <p className="text-sm font-semibold text-gray-700">Active Test Checkout</p>
             {PAYIN_TERMINAL.has(checkout.status) && (
               <button type="button" onClick={() => { setCheckout(null); fetchHistory(); }}
-                className="text-xs text-[#2B7DE9] hover:underline flex items-center gap-1">
+                className="text-xs text-[#1E88FF] hover:underline flex items-center gap-1">
                 <Plus size={12} /> Create another
               </button>
             )}
@@ -794,8 +794,8 @@ function PayInSection() {
 
       {/* History table */}
       {settled.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-green-600" />
               <span className="font-semibold text-gray-800">Settled PayIn History</span>
@@ -812,7 +812,7 @@ function PayInSection() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs min-w-[600px]">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-slate-200">
                   <tr>
                     {["Ref","Amount","Status","UTR","Settled At","Webhook",""].map(h => (
                       <th key={h} className="px-4 py-3 text-left font-bold text-gray-600">{h}</th>
@@ -836,7 +836,7 @@ function PayInSection() {
                         <td className="px-4 py-3">
                           <button type="button"
                             onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
-                            className="text-[#2B7DE9] hover:underline flex items-center gap-1">
+                            className="text-[#1E88FF] hover:underline flex items-center gap-1">
                             {expandedId === row.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />} More
                           </button>
                         </td>
@@ -923,14 +923,14 @@ export default function MasterPayTestMode() {
       <div className="max-w-5xl mx-auto space-y-5 px-3 sm:px-0 py-4 sm:py-0">
 
         {/* Header */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
                 <FlaskConical size={22} className="text-amber-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 mb-1">Test Mode</h1>
+                <h1 className="text-xl font-extrabold tracking-tight text-navy-900 mb-1">Test Mode</h1>
                 <p className="text-sm text-gray-500 leading-relaxed">
                   Test PayIns and Withdrawals are processed end-to-end within the Test Mode environment.
                   No live transactions, balances, commissions, or settlements are affected.
@@ -958,11 +958,11 @@ export default function MasterPayTestMode() {
         {/* Tab switcher */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl w-fit">
           <button type="button" onClick={() => setTab("payin")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "payin" ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "payin" ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             <ArrowDownLeft size={16} /> PayIn
           </button>
           <button type="button" onClick={() => setTab("withdrawal")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "withdrawal" ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${tab === "withdrawal" ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             <ArrowUpRight size={16} /> Withdrawal Testing
           </button>
         </div>

@@ -225,11 +225,11 @@ function HierarchyOverview() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-slate-900 flex items-center">
+        <h2 className="text-base font-bold text-navy-900 flex items-center">
           Hierarchy Overview
           <MetricInfoTooltip formula="Each node's Pay-In Vol/Commission/Net are computed the same way as the top summary cards, scoped to that node and everything beneath it." />
         </h2>
-        <button onClick={load} className="text-xs font-semibold text-[#2B7DE9]">Refresh</button>
+        <button onClick={load} className="text-xs font-semibold text-[#1E88FF]">Refresh</button>
       </div>
 
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}

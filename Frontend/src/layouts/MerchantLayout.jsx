@@ -18,11 +18,11 @@ function MerchantLayout({ children }) {
   const isAdminViewing = localStorage.getItem("rdpay_role") === "admin" && viewAs?.role;
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] flex overflow-hidden">
+    <div className="min-h-screen bg-white flex overflow-hidden">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-navy-900/50 z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -50,14 +50,14 @@ function MerchantLayout({ children }) {
         <SettlementPendingAlert />
 
         {isAdminViewing && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-white px-4 py-2 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-warning-bg px-4 py-2 text-sm">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-yellow-100 px-3 py-1 font-semibold text-yellow-700">
+              <span className="rounded-full bg-white px-3 py-1 font-semibold text-warning">
                 👤 Viewing As
               </span>
-              <span className="text-gray-500">Admin</span>
-              <span className="text-gray-300">›</span>
-              <span className="rounded-md bg-blue-50 px-3 py-1 font-semibold text-blue-700">
+              <span className="text-slate-500">Admin</span>
+              <span className="text-slate-300">›</span>
+              <span className="rounded-md bg-brand-blue-light px-3 py-1 font-semibold text-brand-blue-dark">
                 {viewAs.name} · {viewAs.role?.toUpperCase()}
               </span>
             </div>
@@ -66,7 +66,7 @@ function MerchantLayout({ children }) {
                 localStorage.removeItem("rdpay_view_as");
                 window.location.href = "/";
               }}
-              className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white"
+              className="rounded-control bg-navy-900 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-800"
             >
               Back to Admin
             </button>

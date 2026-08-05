@@ -192,7 +192,7 @@ website: ${window.location.origin}/login`;
 
           <button
             onClick={() => setShowQuickCreate(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#2B7DE9] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0b2a5b]"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#1E88FF] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0b2a5b]"
           >
             <Plus size={14} />
             Create User
@@ -314,7 +314,7 @@ website: ${window.location.origin}/login`;
 
               <button
                 onClick={createQuickUser}
-                className="mt-2 h-[50px] w-full rounded-xl bg-[#2B7DE9] font-semibold text-white hover:bg-[#0b2a5b]"
+                className="mt-2 h-[50px] w-full rounded-xl bg-[#1E88FF] font-semibold text-white hover:bg-[#0b2a5b]"
               >
                 Create User
               </button>
@@ -407,7 +407,7 @@ website: ${window.location.origin}/login`;
 
               <button
                 onClick={updateUser}
-                className="mt-2 h-[50px] w-full rounded-xl bg-[#2B7DE9] font-semibold text-white hover:bg-[#0b2a5b]"
+                className="mt-2 h-[50px] w-full rounded-xl bg-[#1E88FF] font-semibold text-white hover:bg-[#0b2a5b]"
               >
                 Update User
               </button>
@@ -463,7 +463,7 @@ website: ${window.location.origin}/login`;
 
                     <button
                       onClick={() => openEditModal(user)}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#2B7DE9]"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#1E88FF]"
                     >
                       <Pencil size={18} />
                     </button>

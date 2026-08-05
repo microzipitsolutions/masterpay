@@ -31,7 +31,7 @@ function CopyButton({ value }) {
           /* noop */
         }
       }}
-      className="ml-2 text-xs font-medium text-[#2B7DE9] hover:text-[#0b2a5b] underline"
+      className="ml-2 text-xs font-medium text-[#1E88FF] hover:text-[#0b2a5b] underline"
     >
       {copied ? "Copied!" : "Copy"}
     </button>
@@ -197,7 +197,7 @@ function CreatePayin() {
   return (
     <MerchantLayout>
       <div className="flex justify-center pt-4 sm:pt-8 px-3 sm:px-0">
-        <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-4 sm:p-8 shadow-sm">
+        <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4 sm:p-8 shadow-sm">
           <h1 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold text-gray-950">Payin Form</h1>
 
           {message && (
@@ -219,7 +219,7 @@ function CreatePayin() {
                   onChange={handleChange}
                   placeholder="Amount"
                   required
-                  className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                  className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                 />
               </div>
 
@@ -231,7 +231,7 @@ function CreatePayin() {
                   value={formData.webhook_url}
                   onChange={handleChange}
                   placeholder="Webhook Url"
-                  className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                  className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                 />
               </div>
 
@@ -243,11 +243,11 @@ function CreatePayin() {
                   value={formData.unique_id}
                   onChange={handleChange}
                   placeholder="Unique Id"
-                  className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                  className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                 />
               </div>
 
-              <div className="rounded-lg border border-[#dbe7f5] bg-[#eef3fb] px-4 py-3 text-sm text-[#0b2a5b]">
+              <div className="rounded-lg border border-[#dbe7f5] bg-[#e8f3ff] px-4 py-3 text-sm text-[#0b2a5b]">
                 After creating payin, the system will automatically select an active agent bank account connected to this merchant, and show the QR code + bank details below.
               </div>
 
@@ -255,7 +255,7 @@ function CreatePayin() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-lg bg-[#2B7DE9] px-8 py-3 text-sm font-semibold text-white hover:bg-[#0b2a5b] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-[#1E88FF] px-8 py-3 text-sm font-semibold text-white hover:bg-[#0b2a5b] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Saving..." : "Save Payin"}
                 </button>
@@ -281,7 +281,7 @@ function CreatePayin() {
                 <>
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">Scan & Pay with any UPI app</h3>
                   <div className="flex justify-center mb-3">
-                    <div className="bg-white p-3 rounded-xl border border-gray-200">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <QRCodeSVG value={upiUri} size={200} level="M" includeMargin={false} />
                     </div>
                   </div>
@@ -317,14 +317,14 @@ function CreatePayin() {
                 <button
                   type="button"
                   onClick={handleNewPayin}
-                  className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-slate-200 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
                   Create another payin
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/merchant/transactions")}
-                  className="rounded-lg bg-[#2B7DE9] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0b2a5b]"
+                  className="rounded-lg bg-[#1E88FF] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0b2a5b]"
                 >
                   Go to transactions
                 </button>

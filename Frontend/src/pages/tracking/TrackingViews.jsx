@@ -62,16 +62,16 @@
 //   return (
 //     <div>
 //       <div className="mb-6 flex items-center justify-between">
-//         <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+//         <h1 className="text-3xl font-extrabold tracking-tight text-navy-900">{title}</h1>
 //         <button
 //           onClick={fetchRows}
-//           className="cursor-pointer rounded-xl bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white"
+//           className="cursor-pointer rounded-xl bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white"
 //         >
 //           Refresh
 //         </button>
 //       </div>
 
-//       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+//       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 //         <table className="w-full text-sm">
 //           <thead className="bg-gray-50 text-gray-600">
 //             <tr>
@@ -130,7 +130,7 @@
 //                 type="button"
 //                 disabled={page === totalPages}
 //                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-//                 className="rounded-lg bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+//                 className="rounded-lg bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
 //               >
 //                 Next
 //               </button>
@@ -249,11 +249,11 @@
 //   return (
 //     <div>
 //       <div className="mb-6 flex items-center justify-between">
-//         <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+//         <h1 className="text-3xl font-extrabold tracking-tight text-navy-900">{title}</h1>
 
 //         <button
 //           onClick={fetchData}
-//           className="cursor-pointer rounded-xl bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white"
+//           className="cursor-pointer rounded-xl bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white"
 //         >
 //           Refresh
 //         </button>
@@ -332,12 +332,12 @@
 //       )}
 
 //       {loading ? (
-//         <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center text-gray-500">
+//         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-gray-500">
 //           Loading...
 //         </div>
 //       ) : (
 //         <>
-//           <div className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+//           <div className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 //             <div className="border-b p-4">
 //               <h2 className="text-lg font-bold text-gray-900">Agent Account Balance Usage</h2>
 //             </div>
@@ -380,7 +380,7 @@
 //           </div>
 
 //           {!hideSettlementAccounts && (
-//             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+//             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 //               <div className="border-b p-4">
 //                 <h2 className="text-lg font-bold text-gray-900">Settlement Account Usage</h2>
 //               </div>
@@ -506,10 +506,10 @@ function BankCard({ b, canManage, onWithdraw, onToggleActive, onShowHistory, rec
   };
 
   const cardBorder = !active
-    ? "border-gray-300 bg-gray-50 opacity-80"
+    ? "border-slate-200 bg-gray-50 opacity-80"
     : over
       ? "border-red-300 bg-red-50"
-      : "border-gray-200 bg-white";
+      : "border-slate-200 bg-white";
 
   return (
     <div className={`rounded-2xl border p-5 shadow-sm ${cardBorder}`}>
@@ -595,14 +595,14 @@ function BankCard({ b, canManage, onWithdraw, onToggleActive, onShowHistory, rec
               value={amt}
               onChange={(e) => setAmt(e.target.value)}
               placeholder="Withdrawn ₹"
-              className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
+              className="w-32 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#1E88FF]"
             />
             <input
               type="text"
               value={remark}
               onChange={(e) => setRemark(e.target.value)}
               placeholder="Remark"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-[#1E88FF]"
             />
           </div>
           <input
@@ -610,13 +610,13 @@ function BankCard({ b, canManage, onWithdraw, onToggleActive, onShowHistory, rec
             value={date}
             onChange={(e) => setDate(e.target.value)}
             title="Date (optional — defaults to today)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 outline-none focus:border-[#2B7DE9]"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-gray-600 outline-none focus:border-[#1E88FF]"
           />
           <select
             value={link}
             onChange={(e) => setLink(e.target.value)}
             title="Optionally link this to a previous entry (A → B → C)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 outline-none focus:border-[#2B7DE9]"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-gray-600 outline-none focus:border-[#1E88FF]"
           >
             <option value="">Link previous entry (optional)…</option>
             {recentEntries.map((e) => (
@@ -628,14 +628,14 @@ function BankCard({ b, canManage, onWithdraw, onToggleActive, onShowHistory, rec
               type="button"
               onClick={submit}
               disabled={busy || !Number(amt)}
-              className="flex-1 rounded-lg bg-[#2B7DE9] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="flex-1 rounded-lg bg-[#1E88FF] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
               {busy ? "..." : "Withdraw"}
             </button>
             <button
               type="button"
               onClick={() => onShowHistory(b)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               History
             </button>
@@ -647,7 +647,7 @@ function BankCard({ b, canManage, onWithdraw, onToggleActive, onShowHistory, rec
         <button
           type="button"
           onClick={() => onShowHistory(b)}
-          className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           Withdrawal History
         </button>
@@ -685,16 +685,16 @@ export function LoginActivityView({ title = "Login Activity" }) {
   return (
     <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">{title}</h1>
         <button
           onClick={fetchRows}
-          className="cursor-pointer rounded-xl bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white self-start sm:self-auto"
+          className="cursor-pointer rounded-xl bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white self-start sm:self-auto"
         >
           Refresh
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[500px] text-sm">
           <thead className="bg-gray-50 text-gray-600">
             <tr>
@@ -753,7 +753,7 @@ export function LoginActivityView({ title = "Login Activity" }) {
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -1115,11 +1115,11 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
   return (
     <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">{title}</h1>
 
         <button
           onClick={fetchData}
-          className="cursor-pointer rounded-xl bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white self-start sm:self-auto"
+          className="cursor-pointer rounded-xl bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white self-start sm:self-auto"
         >
           Refresh
         </button>
@@ -1163,7 +1163,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
               return (
                 <div
                   key={w.merchant_id}
-                  className={`rounded-2xl border p-5 shadow-sm ${low ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"}`}
+                  className={`rounded-2xl border p-5 shadow-sm ${low ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"}`}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <h3 className="text-base font-bold text-gray-900">{w.merchant_name}</h3>
@@ -1230,7 +1230,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 value={xfer.from}
                 onChange={(e) => setXfer({ ...xfer, from: e.target.value })}
                 disabled={!!(xfer.fromParty || "").trim()}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
               >
                 <option value="">Select…</option>
                 {data.agentAccounts.map((a) => (
@@ -1249,7 +1249,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 onChange={(e) => setXfer({ ...xfer, fromParty: e.target.value })}
                 disabled={!!xfer.from}
                 title={xfer.from ? "Clear From bank to send from a party" : "Select a party"}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
               >
                 <option value="">Select party…</option>
                 {ssParties.map((p) => (
@@ -1265,7 +1265,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 value={xfer.to}
                 onChange={(e) => setXfer({ ...xfer, to: e.target.value })}
                 disabled={!!(xfer.toParty || "").trim()}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
               >
                 <option value="">Select…</option>
                 {data.agentAccounts.map((a) => (
@@ -1284,7 +1284,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 onChange={(e) => setXfer({ ...xfer, toParty: e.target.value })}
                 disabled={!!xfer.to}
                 title={xfer.to ? "Clear To bank to send to a party" : "Select a party"}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
               >
                 <option value="">Select party…</option>
                 {ssParties.map((p) => (
@@ -1301,7 +1301,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 min="0"
                 value={xfer.amount}
                 onChange={(e) => setXfer({ ...xfer, amount: e.target.value })}
-                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm"
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
               />
             </div>
             <div>
@@ -1311,7 +1311,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 value={xfer.date}
                 onChange={(e) => setXfer({ ...xfer, date: e.target.value })}
                 title="Optional — defaults to today"
-                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-600"
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-gray-600"
               />
             </div>
             <div>
@@ -1321,7 +1321,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 value={xfer.remark}
                 onChange={(e) => setXfer({ ...xfer, remark: e.target.value })}
                 placeholder="e.g. for SBI settlement"
-                className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm"
+                className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
               />
             </div>
             <div>
@@ -1332,7 +1332,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 value={xfer.link}
                 onChange={(e) => setXfer({ ...xfer, link: e.target.value })}
                 title="Link this transfer to a previous entry (A → B → C)"
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-600"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-600"
               >
                 <option value="">None…</option>
                 {recentEntries.map((e) => (
@@ -1345,7 +1345,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 type="button"
                 onClick={handleTransfer}
                 disabled={xferBusy}
-                className="h-10 w-full rounded-lg bg-[#2B7DE9] px-5 text-sm font-semibold text-white disabled:opacity-50"
+                className="h-10 w-full rounded-lg bg-[#1E88FF] px-5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {xferBusy ? "…" : "Transfer"}
               </button>
@@ -1388,7 +1388,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 setHistoryDays(d);
                 fetchHistory(d);
               }}
-              className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm"
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm"
             >
               <option value={7}>Last 7 days</option>
               <option value={14}>Last 14 days</option>
@@ -1396,9 +1396,9 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
               <option value={60}>Last 60 days</option>
             </select>
           </div>
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
+              <thead className="border-b border-slate-200 bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left font-bold text-gray-700">Date (IST)</th>
                   {history.accounts.map((a) => (
@@ -1503,7 +1503,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                             <button
                               type="button"
                               onClick={() => handleEditWithdrawal(r)}
-                              className="mr-2 rounded-md border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                              className="mr-2 rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                             >
                               Edit
                             </button>
@@ -1558,7 +1558,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                               <button
                                 type="button"
                                 onClick={() => handleEditTransfer(t)}
-                                className="mr-2 rounded-md border border-gray-300 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                className="mr-2 rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                               >
                                 Edit
                               </button>
@@ -1605,7 +1605,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                   <select
                     value={editEntry.from}
                     onChange={(e) => setEditEntry({ ...editEntry, from: e.target.value })}
-                    className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                   >
                     <option value="">Select…</option>
                     {data.agentAccounts.map((a) => (
@@ -1623,7 +1623,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                       value={editEntry.from}
                       onChange={(e) => setEditEntry({ ...editEntry, from: e.target.value })}
                       disabled={!!(editEntry.fromParty || "").trim()}
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
                     >
                       <option value="">Select…</option>
                       {data.agentAccounts.map((a) => (
@@ -1641,7 +1641,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                       value={editEntry.fromParty || ""}
                       onChange={(e) => setEditEntry({ ...editEntry, fromParty: e.target.value })}
                       disabled={!!editEntry.from}
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
                     >
                       <option value="">Select party…</option>
                       {editEntry.fromParty && !ssParties.includes(editEntry.fromParty) && (
@@ -1658,7 +1658,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                       value={editEntry.to}
                       onChange={(e) => setEditEntry({ ...editEntry, to: e.target.value })}
                       disabled={!!(editEntry.toParty || "").trim()}
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
                     >
                       <option value="">Select…</option>
                       {data.agentAccounts.map((a) => (
@@ -1676,7 +1676,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                       value={editEntry.toParty || ""}
                       onChange={(e) => setEditEntry({ ...editEntry, toParty: e.target.value })}
                       disabled={!!editEntry.to}
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm disabled:bg-gray-100"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-gray-100"
                     >
                       <option value="">Select party…</option>
                       {editEntry.toParty && !ssParties.includes(editEntry.toParty) && (
@@ -1698,7 +1698,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                     min="0"
                     value={editEntry.amount}
                     onChange={(e) => setEditEntry({ ...editEntry, amount: e.target.value })}
-                    className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm"
+                    className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
                   />
                 </div>
                 <div>
@@ -1707,7 +1707,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                     type="date"
                     value={editEntry.date}
                     onChange={(e) => setEditEntry({ ...editEntry, date: e.target.value })}
-                    className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-600"
+                    className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-gray-600"
                   />
                 </div>
               </div>
@@ -1718,7 +1718,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                   type="text"
                   value={editEntry.remark}
                   onChange={(e) => setEditEntry({ ...editEntry, remark: e.target.value })}
-                  className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm"
+                  className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
                 />
               </div>
 
@@ -1729,7 +1729,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 <select
                   value={editEntry.link || ""}
                   onChange={(e) => setEditEntry({ ...editEntry, link: e.target.value })}
-                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-600"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-600"
                 >
                   <option value="">None…</option>
                   {editEntry.link &&
@@ -1749,7 +1749,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
               <button
                 type="button"
                 onClick={() => setEditEntry(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-gray-700"
               >
                 Cancel
               </button>
@@ -1757,7 +1757,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
                 type="button"
                 onClick={saveEdit}
                 disabled={editBusy}
-                className="rounded-lg bg-[#2B7DE9] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-lg bg-[#1E88FF] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {editBusy ? "Saving…" : "Save changes"}
               </button>
@@ -1767,12 +1767,12 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center text-gray-500">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-gray-500">
           Loading...
         </div>
       ) : (
         <>
-          <div className="mb-8 overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="mb-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b p-4">
               <h2 className="text-lg font-bold text-gray-900">Agent Account Balance Usage</h2>
             </div>
@@ -1815,7 +1815,7 @@ export function BalanceTrackingView({ title = "Balance Tracking" }) {
           </div>
 
           {!hideSettlementAccounts && (
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b p-4">
                 <h2 className="text-lg font-bold text-gray-900">Settlement Account Usage</h2>
               </div>

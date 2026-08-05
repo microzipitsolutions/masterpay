@@ -3,6 +3,7 @@ import MerchantLayout from "../../layouts/MerchantLayout";
 import api from "../../api";
 import { QRCodeSVG } from "qrcode.react";
 import { AlertTriangle, X, ChevronDown, ChevronUp, UploadCloud } from "lucide-react";
+import { Badge, PageHeader } from "../../components/ui";
 
 function buildUpiUri({ upiId, payeeName, amount, note, ref }) {
   if (!upiId) return "";
@@ -17,29 +18,13 @@ function buildUpiUri({ upiId, payeeName, amount, note, ref }) {
 }
 
 function StatusPill({ status }) {
-  const s = String(status || "").toLowerCase();
-  const cls =
-    s === "approved" ? "bg-green-100 text-green-700"
-    : s === "rejected" ? "bg-red-100 text-red-700"
-    : "bg-amber-100 text-amber-700";
-  return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>
-      {status || "Pending"}
-    </span>
-  );
+  return <Badge status={status || "Pending"} />;
 }
 
 function DisputeStatusPill({ ticket }) {
   if (!ticket) return <span className="text-xs text-slate-400">No Dispute</span>;
-  const cfg =
-    ticket.status === "Resolved" ? { cls: "bg-green-100 text-green-700", label: "Resolved" }
-    : ticket.status === "In Process" ? { cls: "bg-blue-100 text-blue-700", label: "In Process" }
-    : { cls: "bg-amber-100 text-amber-700", label: "Pending" };
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${cfg.cls}`}>
-      {cfg.label}
-    </span>
-  );
+  const tone = ticket.status === "Resolved" ? "success" : ticket.status === "In Process" ? "info" : "warning";
+  return <Badge tone={tone}>{ticket.status || "Pending"}</Badge>;
 }
 
 function formatDate(value) {
@@ -214,17 +199,18 @@ export default function Transactions() {
 
   return (
     <MerchantLayout>
-      <div className="min-h-[calc(100vh-80px)] bg-[#f5f7fb] px-3 sm:px-8 py-4 sm:py-10">
+      <div className="min-h-[calc(100vh-80px)] bg-white px-3 sm:px-8 py-4 sm:py-10">
         {/* Header */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Transactions</h1>
-            <p className="mt-1 text-sm text-gray-500">PayIn transactions for this merchant</p>
-          </div>
-          <button onClick={exportCSV} className="h-11 rounded-lg bg-green-600 px-5 text-sm font-semibold text-white hover:bg-green-700 self-start sm:self-auto">
-            Export CSV
-          </button>
-        </div>
+        <PageHeader
+          className="mb-6"
+          title="Transactions"
+          subtitle="PayIn transactions for this merchant"
+          actions={
+            <button onClick={exportCSV} className="h-11 rounded-control brand-gradient px-5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)] hover:brightness-[1.06]">
+              Export CSV
+            </button>
+          }
+        />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-4">
@@ -233,12 +219,12 @@ export default function Transactions() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search ID, UTR, Account"
-            className="h-10 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-600 outline-none focus:border-[#2B7DE9]"
+            className="h-10 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-600 outline-none focus:border-[#1E88FF]"
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-600"
+            className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-gray-600"
           >
             <option value="">All Status</option>
             <option value="Approved">Approved</option>
@@ -251,14 +237,14 @@ export default function Transactions() {
           </select>
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-slate-600 whitespace-nowrap">Start</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm" />
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm" />
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-slate-600 whitespace-nowrap">End</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm" />
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm" />
           </div>
           {(startDate || endDate) && (
-            <button onClick={() => { setStartDate(""); setEndDate(""); }} className="h-10 px-3 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">
+            <button onClick={() => { setStartDate(""); setEndDate(""); }} className="h-10 px-3 rounded-lg border border-slate-200 text-sm text-gray-600 hover:bg-gray-50">
               Clear dates
             </button>
           )}
@@ -281,10 +267,10 @@ export default function Transactions() {
         {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         {/* Main table */}
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-card border border-slate-200 bg-white shadow-card">
           <table className="w-full min-w-[950px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-white text-left">
+              <tr className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur text-left">
                 <th className="px-4 py-4 font-bold text-gray-900">#</th>
                 <th className="px-4 py-4 font-bold text-gray-900">Transaction ID</th>
                 <th className="px-4 py-4 font-bold text-gray-900">Amount</th>
@@ -331,13 +317,13 @@ export default function Transactions() {
                     <div className="flex items-center justify-end gap-2 flex-wrap">
                       <button
                         onClick={() => setViewItem(item)}
-                        className="text-xs text-[#2B7DE9] underline whitespace-nowrap"
+                        className="text-xs text-[#1E88FF] underline whitespace-nowrap"
                       >
                         View
                       </button>
                       <button
                         onClick={() => openProofModal(item)}
-                        className="text-xs text-[#2B7DE9] underline whitespace-nowrap"
+                        className="text-xs text-[#1E88FF] underline whitespace-nowrap"
                       >
                         Update Proof
                       </button>
@@ -357,20 +343,20 @@ export default function Transactions() {
 
         {/* Pagination */}
         {!loading && filtered.length > rowsPerPage && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4">
-            <p className="text-sm font-semibold text-gray-600">Page {currentPage}/{totalPages}</p>
+          <div className="mt-4 flex items-center justify-between rounded-card border border-slate-200 bg-white px-5 py-4 shadow-card">
+            <p className="text-sm font-medium text-slate-500">Page <span className="font-semibold text-navy-900">{currentPage}</span>/{totalPages}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 disabled={currentPage === 1}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-control border border-slate-200 px-4 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-control border border-slate-200 px-4 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -384,16 +370,16 @@ export default function Transactions() {
             <button
               type="button"
               onClick={() => setShowDisputeHistory((v) => !v)}
-              className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3 hover:text-[#2B7DE9]"
+              className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3 hover:text-[#1E88FF]"
             >
               <AlertTriangle size={15} className="text-orange-500" />
               PayIn Dispute History ({disputes.length})
               {showDisputeHistory ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
             {showDisputeHistory && (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+              <div className="bg-white rounded-card border border-slate-200 shadow-card overflow-x-auto">
                 <table className="w-full text-sm min-w-[640px]">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
                     <tr>
                       <th className="text-left px-4 py-3 font-bold">Ticket #</th>
                       <th className="text-left px-4 py-3 font-bold">Subject</th>
@@ -406,7 +392,7 @@ export default function Transactions() {
                   <tbody>
                     {disputes.map((t) => (
                       <tr key={t.id} className="border-b border-slate-100 last:border-b-0">
-                        <td className="px-4 py-3 font-mono text-xs font-semibold text-[#2B7DE9]">#{t.id}</td>
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-[#1E88FF]">#{t.id}</td>
                         <td className="px-4 py-3 text-xs max-w-[220px]">
                           <div className="font-semibold text-slate-700 truncate">{t.subject}</div>
                         </td>
@@ -453,7 +439,7 @@ export default function Transactions() {
                 return (
                   <div className="mb-5 flex flex-col items-center">
                     <h3 className="text-sm font-semibold text-gray-700 mb-2">Scan & Pay</h3>
-                    <div className="bg-white p-3 rounded-xl border border-gray-200">
+                    <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <QRCodeSVG value={upiUri} size={170} level="M" includeMargin={false} />
                     </div>
                     <a
@@ -553,7 +539,7 @@ export default function Transactions() {
                   <button type="button" onClick={() => setProofItem(null)} className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700">
                     Cancel
                   </button>
-                  <button type="submit" disabled={proofSubmitting} className="rounded-lg bg-[#2B7DE9] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
+                  <button type="submit" disabled={proofSubmitting} className="rounded-lg bg-[#1E88FF] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
                     {proofSubmitting ? "Saving..." : "Update Proof"}
                   </button>
                 </div>

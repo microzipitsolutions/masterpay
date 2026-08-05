@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { X, Send, Copy, Check } from "lucide-react";
+import { Send, Copy, Check } from "lucide-react";
 import AgentLayout from "../../layouts/AgentLayout";
 import api from "../../api";
+import {
+  PageHeader,
+  Badge,
+  TableContainer,
+  Table,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  TableEmptyRow,
+  Modal,
+  Button,
+} from "../../components/ui";
 
 function CopyButton({ value }) {
   const [copied, setCopied] = useState(false);
@@ -39,14 +52,14 @@ function DestinationCard({ w }) {
   const visible = rows.filter((r) => r.value);
   if (visible.length === 0) return null;
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+    <div className="rounded-control border border-slate-200 bg-slate-50 p-3 space-y-2">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
         {w.transaction_type === "upi" ? "UPI Details" : "Bank Details"}
       </div>
       {visible.map((r) => (
         <div key={r.label} className="flex items-center justify-between text-xs">
           <span className="text-slate-500">{r.label}</span>
-          <span className="flex items-center font-semibold text-slate-800">
+          <span className="flex items-center font-semibold text-navy-900">
             <span className={r.mono ? "font-mono" : ""}>{r.value}</span>
             <CopyButton value={r.value} />
           </span>
@@ -56,17 +69,6 @@ function DestinationCard({ w }) {
   );
 }
 
-function StatusPill({ status }) {
-  const styles = {
-    pending: "bg-amber-100 text-amber-700",
-    picked: "bg-blue-100 text-blue-700",
-    utr_submitted: "bg-indigo-100 text-indigo-700",
-    cleared: "bg-green-100 text-green-700",
-    rejected: "bg-red-100 text-red-700",
-  };
-  const label = { pending: "Pending", picked: "Picked", utr_submitted: "UTR Submitted", cleared: "Cleared", rejected: "Rejected" };
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${styles[status] || "bg-gray-100 text-gray-700"}`}>{label[status] || status}</span>;
-}
 function formatDate(d) { return d ? new Date(d).toLocaleString("en-GB") : "—"; }
 
 export default function AgentWithdrawals() {
@@ -124,109 +126,101 @@ export default function AgentWithdrawals() {
   return (
     <AgentLayout>
       <div className="px-3 sm:px-6 py-4 sm:py-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">Withdrawals</h1>
+        <PageHeader title="Withdrawals" className="mb-4" />
 
-        <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1">
-          <button onClick={() => setTab("pending")} className={`px-4 py-2 rounded text-sm font-semibold ${tab === "pending" ? "bg-[#2B7DE9] text-white" : "text-slate-700"}`}>Pending Pool ({list.filter(w => w.status === "pending").length})</button>
-          <button onClick={() => setTab("mine")} className={`px-4 py-2 rounded text-sm font-semibold ${tab === "mine" ? "bg-[#2B7DE9] text-white" : "text-slate-700"}`}>My Picked & History</button>
-          <button onClick={() => setTab("all")} className={`px-4 py-2 rounded text-sm font-semibold ${tab === "all" ? "bg-[#2B7DE9] text-white" : "text-slate-700"}`}>All</button>
+        <div className="mb-4 inline-flex rounded-control border border-slate-200 bg-white p-1">
+          <button onClick={() => setTab("pending")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === "pending" ? "brand-gradient text-white" : "text-navy-700 hover:bg-slate-50"}`}>Pending Pool ({list.filter(w => w.status === "pending").length})</button>
+          <button onClick={() => setTab("mine")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === "mine" ? "brand-gradient text-white" : "text-navy-700 hover:bg-slate-50"}`}>My Picked & History</button>
+          <button onClick={() => setTab("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === "all" ? "brand-gradient text-white" : "text-navy-700 hover:bg-slate-50"}`}>All</button>
         </div>
 
-        {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        {error && <div className="mb-4 rounded-control border border-red-200 bg-danger-bg px-4 py-3 text-sm text-danger">{error}</div>}
 
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
-          <table className="w-full min-w-[750px] text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-bold">ID</th>
-                <th className="text-left px-4 py-3 font-bold">Amount</th>
-                <th className="text-left px-4 py-3 font-bold">UTR</th>
-                <th className="text-left px-4 py-3 font-bold">Agent</th>
-                <th className="text-left px-4 py-3 font-bold">Created</th>
-                <th className="text-left px-4 py-3 font-bold">Approved/Rejected</th>
-                <th className="text-left px-4 py-3 font-bold">Status</th>
-                <th className="text-right px-4 py-3 font-bold">Action</th>
-              </tr>
-            </thead>
+        <TableContainer>
+          <Table minWidth="750px">
+            <Thead>
+              <Th>ID</Th>
+              <Th>Amount</Th>
+              <Th>UTR</Th>
+              <Th>Agent</Th>
+              <Th>Created</Th>
+              <Th>Approved/Rejected</Th>
+              <Th>Status</Th>
+              <Th align="right">Action</Th>
+            </Thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan="8" className="text-center py-8 text-slate-500">No transactions</td></tr>
+                <TableEmptyRow colSpan={8}>No transactions</TableEmptyRow>
               ) : filtered.map((w) => (
-                <tr key={w.id} className="border-b border-slate-100 last:border-b-0">
-                  <td className="px-4 py-3 font-mono text-xs">{w.id}</td>
-                  <td className="px-4 py-3 font-semibold">₹{Number(w.amount).toLocaleString("en-IN")}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{w.utr_number || "—"}</td>
-                  <td className="px-4 py-3 text-xs">
+                <Tr key={w.id}>
+                  <Td className="font-mono text-xs">{w.id}</Td>
+                  <Td className="font-semibold">₹{Number(w.amount).toLocaleString("en-IN")}</Td>
+                  <Td className="font-mono text-xs">{w.utr_number || "—"}</Td>
+                  <Td className="text-xs">
                     {w.agent_name
                       ? w.agent_name
                       : w.sspay_order_id
                         ? (w.assigned_agent_name || "Auto")
                         : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.created_at)}</td>
-                  <td className="px-4 py-3 text-slate-600 text-xs">{formatDate(w.cleared_or_rejected_date)}</td>
-                  <td className="px-4 py-3"><StatusPill status={w.status} /></td>
-                  <td className="px-4 py-3 text-right">
+                  </Td>
+                  <Td className="text-xs text-slate-500">{formatDate(w.created_at)}</Td>
+                  <Td className="text-xs text-slate-500">{formatDate(w.cleared_or_rejected_date)}</Td>
+                  <Td><Badge status={w.status} /></Td>
+                  <Td align="right">
                     {w.status === "pending" && (
-                      <button onClick={() => setPickConfirm(w)} className="rounded bg-[#2B7DE9] text-white text-xs font-semibold px-3 py-1.5 hover:bg-[#0b2a5b]">Pick</button>
+                      <Button size="sm" onClick={() => setPickConfirm(w)}>Pick</Button>
                     )}
                     {w.status === "picked" && (
-                      <button onClick={() => { setUtrModal(w); setUtrForm({ utr_number: "", notes: "" }); }} className="inline-flex items-center gap-1 rounded bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5">
-                        <Send size={12} /> Submit UTR
-                      </button>
+                      <Button size="sm" variant="secondary" icon={Send} onClick={() => { setUtrModal(w); setUtrForm({ utr_number: "", notes: "" }); }}>Submit UTR</Button>
                     )}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               ))}
             </tbody>
-          </table>
-        </div>
+          </Table>
+        </TableContainer>
 
-        {pickConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="relative w-full max-w-md rounded-2xl bg-white p-6 text-center">
-              <button onClick={() => setPickConfirm(null)} className="absolute right-4 top-4 w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center"><X size={18} /></button>
-              <h2 className="text-xl font-bold mb-2">Pick Transaction</h2>
+        <Modal open={!!pickConfirm} onClose={() => setPickConfirm(null)} title="Pick Transaction" maxWidth="max-w-md">
+          {pickConfirm && (
+            <>
               <p className="text-sm text-slate-600 mb-6">Are you sure you want to pick this transaction?</p>
-              <div className="bg-slate-50 rounded-lg p-3 text-left text-xs space-y-1 mb-5">
-                <div><span className="text-slate-500">Amount:</span> <strong>₹{Number(pickConfirm.amount).toLocaleString("en-IN")}</strong></div>
+              <div className="bg-slate-50 rounded-control border border-slate-200 p-3 text-left text-xs space-y-1 mb-5">
+                <div><span className="text-slate-500">Amount:</span> <strong className="text-navy-900">₹{Number(pickConfirm.amount).toLocaleString("en-IN")}</strong></div>
                 <div><span className="text-slate-500">Type:</span> {pickConfirm.transaction_type}</div>
                 <div className="text-[10px] text-slate-400 italic pt-1">Destination details will be revealed after you pick.</div>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setPickConfirm(null)} className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold">Cancel</button>
-                <button onClick={pick} disabled={picking} className="flex-1 rounded-lg bg-[#2B7DE9] text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{picking ? "Picking..." : "Confirm"}</button>
+                <Button variant="secondary" className="flex-1" onClick={() => setPickConfirm(null)}>Cancel</Button>
+                <Button className="flex-1" loading={picking} onClick={pick}>Confirm</Button>
               </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </Modal>
 
-        {utrModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <form onSubmit={submitUtr} className="relative w-full max-w-md rounded-2xl bg-white p-6">
-              <button type="button" onClick={() => setUtrModal(null)} className="absolute right-4 top-4 w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center"><X size={18} /></button>
-              <h2 className="text-xl font-bold mb-2">Submit UTR</h2>
+        <Modal open={!!utrModal} onClose={() => setUtrModal(null)} title="Submit UTR" maxWidth="max-w-md">
+          {utrModal && (
+            <form onSubmit={submitUtr}>
               <p className="text-sm text-slate-600 mb-4">For ₹{Number(utrModal.amount).toLocaleString("en-IN")}</p>
               <div className="mb-4">
                 <DestinationCard w={utrModal} />
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">UTR Number</label>
-                  <input value={utrForm.utr_number} onChange={(e) => setUtrForm({ ...utrForm, utr_number: e.target.value })} className="w-full h-11 rounded-lg border border-slate-300 px-3 font-mono text-sm" required />
+                  <label className="block text-sm font-semibold text-navy-800 mb-1">UTR Number</label>
+                  <input value={utrForm.utr_number} onChange={(e) => setUtrForm({ ...utrForm, utr_number: e.target.value })} className="w-full h-11 rounded-control border border-slate-200 px-3 font-mono text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Notes (optional)</label>
-                  <textarea value={utrForm.notes} onChange={(e) => setUtrForm({ ...utrForm, notes: e.target.value })} className="w-full h-20 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                  <label className="block text-sm font-semibold text-navy-800 mb-1">Notes (optional)</label>
+                  <textarea value={utrForm.notes} onChange={(e) => setUtrForm({ ...utrForm, notes: e.target.value })} className="w-full h-20 rounded-control border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15" />
                 </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={() => setUtrModal(null)} className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold">Cancel</button>
-                <button type="submit" disabled={submittingUtr} className="rounded-lg bg-indigo-600 text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">{submittingUtr ? "Submitting..." : "Submit"}</button>
+                <Button type="button" variant="secondary" onClick={() => setUtrModal(null)}>Cancel</Button>
+                <Button type="submit" loading={submittingUtr}>Submit</Button>
               </div>
             </form>
-          </div>
-        )}
+          )}
+        </Modal>
       </div>
     </AgentLayout>
   );

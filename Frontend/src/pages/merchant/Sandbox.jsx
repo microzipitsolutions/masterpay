@@ -34,7 +34,7 @@ async function sandboxFetch(method, path, body, extraHeaders = {}) {
 
 function MethodBadge({ method }) {
   const s = { GET: "bg-blue-50 text-blue-700 border border-blue-200", POST: "bg-emerald-50 text-emerald-700 border border-emerald-200" };
-  return <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${s[method] || "bg-gray-50 text-gray-700 border border-gray-200"}`}>{method}</span>;
+  return <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${s[method] || "bg-gray-50 text-gray-700 border border-slate-200"}`}>{method}</span>;
 }
 
 function HttpBadge({ status }) {
@@ -46,12 +46,12 @@ function HttpBadge({ status }) {
 function ResponseBox({ result, loading }) {
   if (loading) return (
     <div className="flex items-center gap-2 text-sm text-gray-400 py-8">
-      <div className="w-4 h-4 border-2 border-gray-300 border-t-[#2B7DE9] rounded-full animate-spin flex-shrink-0" />
+      <div className="w-4 h-4 border-2 border-slate-200 border-t-[#1E88FF] rounded-full animate-spin flex-shrink-0" />
       Waiting for sandbox response…
     </div>
   );
   if (!result) return (
-    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400">Response appears here</div>
+    <div className="bg-gray-50 border border-dashed border-slate-200 rounded-xl p-6 text-center text-sm text-gray-400">Response appears here</div>
   );
   return (
     <div className="space-y-2">
@@ -96,8 +96,8 @@ function EndpointCard({ step, title, method, path, defaultBody, headersFn, onSuc
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-3">
         <span className="text-xs font-bold text-gray-400 bg-gray-200 px-2 py-0.5 rounded">{step}</span>
         <MethodBadge method={method} />
         <code className="text-sm font-mono text-gray-700 flex-1 truncate">{path}</code>
@@ -113,7 +113,7 @@ function EndpointCard({ step, title, method, path, defaultBody, headersFn, onSuc
               className={`w-full font-mono text-xs bg-[#111827] text-emerald-400 rounded-xl p-4 resize-y outline-none focus:ring-2 focus:ring-blue-500 ${bodyErr ? "ring-2 ring-red-500" : ""}`} />
             {bodyErr && <p className="text-xs text-red-500">{bodyErr}</p>}
             <button type="button" onClick={handleSend} disabled={loading}
-              className="w-full bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+              className="w-full bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
               {loading ? "Sending…" : "Send Request"}
             </button>
           </div>
@@ -147,8 +147,8 @@ function GetStatusCard({ step, title, path, pathLabel, placeholder, headersFn, h
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-3">
         <span className="text-xs font-bold text-gray-400 bg-gray-200 px-2 py-0.5 rounded">{step}</span>
         <MethodBadge method="GET" />
         <code className="text-sm font-mono text-gray-700">{typeof path === "function" ? path(":id") : `${path}/:id`}</code>
@@ -162,11 +162,11 @@ function GetStatusCard({ step, title, path, pathLabel, placeholder, headersFn, h
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">{pathLabel}</label>
               <input type="text" value={prefillId || localId} onChange={e => setLocalId(e.target.value)}
                 placeholder={placeholder}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
               {prefillId && <p className="text-xs text-emerald-600 mt-1">Auto-filled from previous step</p>}
             </div>
             <button type="button" onClick={handleSend} disabled={loading || !effectiveId.trim()}
-              className="w-full bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+              className="w-full bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
               {loading ? "Sending…" : "Send Request"}
             </button>
           </div>
@@ -202,7 +202,7 @@ function PayInTab({ payinKey }) {
       <div className="flex gap-2 bg-gray-100 p-1 rounded-xl w-fit">
         {["A", "B"].map(m => (
           <button key={m} type="button" onClick={() => setMode(m)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${mode === m ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${mode === m ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             Mode {m} — {m === "A" ? "Direct API" : "Hosted Checkout"}
           </button>
         ))}
@@ -268,7 +268,7 @@ function PayoutTab({ withdrawalKey }) {
           <div className="flex gap-2 bg-gray-100 p-1 rounded-xl w-fit mb-4">
             {[["upi","UPI"],["account","Bank Account"]].map(([t, label]) => (
               <button key={t} type="button" onClick={() => setType(t)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${type === t ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${type === t ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                 {label}
               </button>
             ))}
@@ -325,18 +325,18 @@ function SandboxKeysCard({ onKeysLoaded }) {
   const SANDBOX_URL = "https://sandbox.masterpay.live";
 
   if (loading) return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex items-center gap-3 text-sm text-gray-400">
-      <div className="w-4 h-4 border-2 border-gray-300 border-t-[#2B7DE9] rounded-full animate-spin" />
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex items-center gap-3 text-sm text-gray-400">
+      <div className="w-4 h-4 border-2 border-slate-200 border-t-[#1E88FF] rounded-full animate-spin" />
       Loading sandbox keys…
     </div>
   );
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 flex-wrap">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="px-6 py-4 bg-gray-50 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
         <h2 className="font-bold text-gray-800">Sandbox API Keys</h2>
         <button type="button" onClick={generate} disabled={rotating}
-          className="text-sm bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-xl transition-colors">
+          className="text-sm bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-xl transition-colors">
           {rotating ? "Generating…" : keys ? "Rotate Keys" : "Generate Keys"}
         </button>
       </div>
@@ -355,12 +355,12 @@ function SandboxKeysCard({ onKeysLoaded }) {
         )}
 
         {/* How to use */}
-        <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-3 text-sm">
+        <div className="rounded-xl bg-gray-50 border border-slate-200 p-4 space-y-3 text-sm">
           <p className="font-semibold text-gray-700">How to use the sandbox</p>
           <div className="space-y-2 text-xs text-gray-600">
             <div>
               <span className="font-semibold text-gray-700">Production Base URL:</span>
-              <span className="ml-2 font-mono bg-white border border-gray-200 rounded px-2 py-0.5">https://masterpay.live</span>
+              <span className="ml-2 font-mono bg-white border border-slate-200 rounded px-2 py-0.5">https://masterpay.live</span>
             </div>
             <div>
               <span className="font-semibold text-gray-700">Sandbox Base URL:</span>
@@ -422,10 +422,10 @@ function Sandbox() {
       <div className="max-w-5xl mx-auto space-y-6 px-3 sm:px-0 py-4 sm:py-0">
 
         {/* Header */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">API Sandbox</h1>
+              <h1 className="text-2xl font-extrabold tracking-tight text-navy-900 mb-1">API Sandbox</h1>
               <p className="text-sm text-gray-500 max-w-xl">
                 Test your PayIn and Payout integration end-to-end.
                 Sandbox requests never create database records, affect balances,
@@ -446,10 +446,10 @@ function Sandbox() {
         <SandboxKeysCard onKeysLoaded={handleKeysLoaded} />
 
         {/* Tabs */}
-        <div className="flex gap-2 bg-white border border-gray-200 rounded-2xl p-1.5 shadow-sm w-full sm:w-fit overflow-x-auto">
+        <div className="flex gap-2 bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm w-full sm:w-fit overflow-x-auto">
           {[{ id: "payin", label: "PayIn" }, { id: "payout", label: "Payout (Withdrawal)" }].map(tab => (
             <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id ? "bg-[#2B7DE9] text-white shadow-sm" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"}`}>
+              className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id ? "bg-[#1E88FF] text-white shadow-sm" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"}`}>
               {tab.label}
             </button>
           ))}
@@ -457,24 +457,24 @@ function Sandbox() {
 
         {/* API key display for active tab */}
         {activeTab === "payin" ? (
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               PayIn API Key in use{" "}
               <code className="text-xs font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">x-api-key header</code>
             </label>
             <input type="text" value={payinKey} onChange={e => setPayinKey(e.target.value)}
               placeholder="Generate sandbox keys above or paste one manually"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               Withdrawal API Key in use{" "}
               <code className="text-xs font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">api-key header</code>
             </label>
             <input type="text" value={withdrawalKey} onChange={e => setWithdrawalKey(e.target.value)}
               placeholder="Generate sandbox keys above or paste one manually"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         )}
 

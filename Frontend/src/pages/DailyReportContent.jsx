@@ -292,7 +292,7 @@ export default function DailyReportContent() {
   return (
     <div className="px-2 py-2">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Daily Report</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Daily Report</h1>
         <p className="text-sm text-slate-600 mt-1">View the per-day summary and full payin &amp; withdrawal transactions, then download as xlsx or PDF.</p>
       </div>
 
@@ -386,7 +386,7 @@ export default function DailyReportContent() {
             type="button"
             onClick={viewReport}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-2.5 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg brand-gradient hover:brightness-[1.06] text-white font-semibold px-5 py-2.5 disabled:opacity-50"
           >
             <Eye size={16} />
             {loading ? "Loading..." : "View Report"}

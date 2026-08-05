@@ -180,9 +180,9 @@ function SettlementAccountsList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4 md:p-6">
+    <div className="min-h-screen bg-white p-4 md:p-6">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">
           Settlement Accounts List
         </h1>
 
@@ -203,7 +203,7 @@ function SettlementAccountsList() {
             <select
               value={merchantFilter}
               onChange={(e) => setMerchantFilter(e.target.value)}
-              className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             >
               <option value="">Search...</option>
 
@@ -223,7 +223,7 @@ function SettlementAccountsList() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             >
               <option value="">Search...</option>
               <option value="true">Active</option>
@@ -240,7 +240,7 @@ function SettlementAccountsList() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full sm:w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             />
           </div>
 
@@ -253,7 +253,7 @@ function SettlementAccountsList() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full sm:w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             />
           </div>
         </div>
@@ -271,10 +271,10 @@ function SettlementAccountsList() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="overflow-auto">
           <table className="w-full min-w-[1100px]">
-            <thead className="border-b border-gray-200">
+            <thead className="border-b border-slate-200">
               <tr>
                 {[
                   "ID",
@@ -362,7 +362,7 @@ function SettlementAccountsList() {
                       <button
                         type="button"
                         onClick={() => setSelectedAccount(account)}
-                        className="font-medium text-[#2B7DE9] underline"
+                        className="font-medium text-[#1E88FF] underline"
                       >
                         View All
                       </button>
@@ -394,7 +394,7 @@ function SettlementAccountsList() {
                   onClick={() => setCurrentPage(page)}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold ${
                     currentPage === page
-                      ? "bg-[#2B7DE9] text-white"
+                      ? "bg-[#1E88FF] text-white"
                       : "border text-gray-700"
                   }`}
                 >
@@ -470,7 +470,7 @@ function SettlementAccountsList() {
               <button
                 type="button"
                 onClick={() => setSelectedAccount(null)}
-                className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+                className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
               >
                 Close
               </button>
@@ -500,7 +500,7 @@ function SettlementAccountsList() {
                   type="date"
                   value={exportStartDate}
                   onChange={(e) => setExportStartDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
 
@@ -513,7 +513,7 @@ function SettlementAccountsList() {
                   type="date"
                   value={exportEndDate}
                   onChange={(e) => setExportEndDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
             </div>

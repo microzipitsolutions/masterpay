@@ -8,8 +8,8 @@ function ApiDocumentationmerchant() {
   return (
     <MerchantLayout>
       <div className="max-w-6xl mx-auto px-3 sm:px-0 py-4 sm:py-0">
-        <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-8">
-          <h1 className="text-4xl font-bold text-[#2B7DE9] mb-3">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 sm:p-8">
+          <h1 className="text-4xl font-bold text-[#1E88FF] mb-3">
             Merchant PayIn API Documentation
           </h1>
 
@@ -18,7 +18,7 @@ function ApiDocumentationmerchant() {
           </p>
 
           {/* API KEY */}
-          <div className="bg-[#f8fafc] border border-gray-200 rounded-2xl p-5 mb-8">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-8">
           <h2 className="text-xl font-bold mb-3">
   Your API Key{" "}
   <span className="text-sm font-normal text-gray-500">
@@ -71,7 +71,7 @@ function ApiDocumentationmerchant() {
           </div>
 
           {/* MODE A HEADER */}
-          <h2 className="text-3xl font-bold mb-2 text-gray-800 border-b-2 border-gray-200 pb-2">
+          <h2 className="text-3xl font-bold mb-2 text-gray-800 border-b-2 border-slate-200 pb-2">
             Mode A — API Integration
           </h2>
           <p className="text-gray-600 text-sm mb-6">
@@ -298,7 +298,7 @@ function ApiDocumentationmerchant() {
                   key={index}
                   className="flex items-center gap-4 bg-indigo-50 border border-indigo-200 rounded-xl p-4"
                 >
-                  <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full brand-gradient text-white flex items-center justify-center font-bold flex-shrink-0">
                     {index + 1}
                   </div>
 
@@ -327,9 +327,9 @@ function ApiDocumentationmerchant() {
               ].map((step, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl p-4"
+                  className="flex items-center gap-4 bg-gray-50 border border-slate-200 rounded-xl p-4"
                 >
-                  <div className="h-10 w-10 rounded-full bg-[#2B7DE9] text-white flex items-center justify-center font-bold">
+                  <div className="h-10 w-10 rounded-full bg-[#1E88FF] text-white flex items-center justify-center font-bold">
                     {index + 1}
                   </div>
 
@@ -387,8 +387,8 @@ function ApiDocumentationmerchant() {
           </div>
 
           {/* ── WITHDRAWAL / PAYOUT API ────────────────────────────────── */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 mt-8">
-            <h2 className="text-2xl font-bold mb-2 text-[#2B7DE9]">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mt-8">
+            <h2 className="text-2xl font-bold mb-2 text-[#1E88FF]">
               Withdrawal (Payout) API
             </h2>
             <p className="text-sm text-gray-600 mb-4">
@@ -507,7 +507,7 @@ Content-Type: application/json`}
             </pre>
 
             <h4 className="font-semibold text-sm mb-1">Status values</h4>
-            <div className="rounded-xl border border-gray-200 overflow-x-auto mb-6">
+            <div className="rounded-card border border-slate-200 shadow-card overflow-x-auto mb-6">
               <table className="w-full text-sm min-w-[400px]">
                 <thead className="bg-gray-50">
                   <tr>
@@ -549,7 +549,7 @@ Content-Type: application/json`}
             </pre>
 
             <h4 className="font-semibold text-sm mb-1">Webhook status values</h4>
-            <div className="rounded-xl border border-gray-200 overflow-x-auto">
+            <div className="rounded-card border border-slate-200 shadow-card overflow-x-auto">
               <table className="w-full text-sm min-w-[400px]">
                 <thead className="bg-gray-50">
                   <tr>

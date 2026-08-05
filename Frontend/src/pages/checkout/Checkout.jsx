@@ -342,7 +342,7 @@ useEffect(() => {
 const showForm = status === "Pending";
 
   return (
-    <div className="min-h-screen bg-slate-50 py-6 px-3 sm:px-4">
+    <div className="min-h-screen bg-white py-6 px-3 sm:px-4">
       <div className="max-w-md mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="px-5 py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white">
@@ -420,7 +420,7 @@ const showForm = status === "Pending";
                     <button
                       type="submit"
                       disabled={submitting || !resubmitUtr.trim()}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg"
+                      className="flex-1 brand-gradient hover:brightness-[1.06] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg"
                     >
                       {submitting ? "Submitting…" : "Update UTR"}
                     </button>
@@ -461,7 +461,7 @@ const showForm = status === "Pending";
                 <button
                   type="submit"
                   disabled={submitting || !disputeUtr.trim()}
-                  className="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg"
+                  className="mt-3 w-full brand-gradient hover:brightness-[1.06] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg"
                 >
                   {submitting ? "Submitting…" : "Submit for manual review"}
                 </button>
@@ -545,13 +545,13 @@ const showForm = status === "Pending";
                           key={app.id}
                           type="button"
                           onClick={() => setPayApp(app.id)}
-                          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 transition ${selected ? "border-slate-900 ring-1 ring-slate-900" : "border-slate-200 hover:border-slate-300"}`}
+                          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 transition ${selected ? "border-brand-blue ring-1 ring-brand-blue" : "border-slate-200 hover:border-slate-300"}`}
                         >
                           <span className="flex items-center gap-3">
                             {app.badge}
-                            <span className="text-sm font-medium text-slate-900">{app.label}</span>
+                            <span className="text-sm font-medium text-navy-900">{app.label}</span>
                           </span>
-                          <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-slate-900 bg-slate-900" : "border-slate-300"}`}>
+                          <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-brand-blue bg-brand-blue" : "border-slate-300"}`}>
                             {selected && (
                               <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 text-white">
                                 <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 011.4-1.4l3.1 3.1 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd" />
@@ -564,7 +564,7 @@ const showForm = status === "Pending";
                   </div>
                   <a
                     href={appLinks[payApp]}
-                    className="mt-4 block w-full rounded-xl bg-slate-900 py-3 text-center font-semibold text-white transition hover:bg-black"
+                    className="mt-4 block w-full rounded-xl brand-gradient py-3 text-center font-semibold text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)] transition hover:brightness-[1.06]"
                   >
                     Pay ₹{Number(data.amount).toLocaleString("en-IN")}
                   </a>
@@ -594,7 +594,7 @@ const showForm = status === "Pending";
                 <button
                   type="submit"
                   disabled={submitting || !utr.trim()}
-                  className="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition"
+                  className="mt-3 w-full brand-gradient hover:brightness-[1.06] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition"
                 >
                   {submitting ? "Submitting…" : "I have paid — Submit UTR"}
                 </button>

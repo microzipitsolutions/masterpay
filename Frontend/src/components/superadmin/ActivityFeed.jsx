@@ -58,10 +58,10 @@ function ActivityFeed() {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+        <h2 className="text-base font-bold text-navy-900 flex items-center gap-2">
           <Clock size={18} className="text-slate-500" /> Recent Financial Activity
         </h2>
-        <button onClick={load} className="text-xs font-semibold text-[#2B7DE9]">Refresh</button>
+        <button onClick={load} className="text-xs font-semibold text-[#1E88FF]">Refresh</button>
       </div>
 
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -88,7 +88,7 @@ function ActivityFeed() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-bold text-slate-900">{money(item.amount)}</div>
+                  <div className="text-sm font-bold text-navy-900">{money(item.amount)}</div>
                   {item.commission_amount > 0 && (
                     <div className="text-[11px] text-slate-400">commission {money(item.commission_amount)}</div>
                   )}

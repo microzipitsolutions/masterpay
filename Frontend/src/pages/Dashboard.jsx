@@ -1,8 +1,61 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../api";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Percent,
+  Landmark,
+  Wallet2,
+  Store,
+  Users,
+  CheckCircle2,
+  Receipt,
+  ListChecks,
+} from "lucide-react";
 import DateViewFilter from "../components/DateViewFilter";
 import { computeDateRange } from "../utils/dateViewFilter";
+import { PageHeader, KpiCard, Modal, Card, CardHeader } from "../components/ui";
+
+const BAR_COLORS = { agent: "#1e88ff", merchant: "#14c7b7" };
+
+// Compact "top 5" horizontal bar list — reuses the same per-agent/per-merchant
+// rows the breakdown modals already fetch, just rendered as a chart instead of
+// a flat number, so the trend/ranking is visible without opening anything.
+function TopBreakdownChart({ title, subtitle, rows, formatValue, color }) {
+  const top = (rows || []).slice(0, 5);
+  const max = Math.max(1, ...top.map((r) => Number(r.amount || 0)));
+
+  return (
+    <div className="rounded-card border border-slate-200 bg-white p-5 sm:p-6 shadow-card">
+      <h3 className="text-base font-bold text-navy-900">{title}</h3>
+      {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+
+      {top.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">No data yet</p>
+      ) : (
+        <div className="mt-5 space-y-3.5">
+          {top.map((row) => {
+            const amount = Number(row.amount || 0);
+            const pct = Math.max(4, (amount / max) * 100);
+            return (
+              <div key={row.id ?? row.name}>
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <span className="truncate text-sm font-medium text-navy-800">{row.name}</span>
+                  <span className="shrink-0 text-sm font-semibold text-navy-900">{formatValue(amount)}</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Dashboard() {
   const defaultRange = computeDateRange("current_month");
@@ -10,6 +63,7 @@ function Dashboard() {
   const [endDate, setEndDate] = useState(defaultRange.endDate);
   const [merchantId, setMerchantId] = useState("");
   const [merchants, setMerchants] = useState([]);
+  const [breakdownTab, setBreakdownTab] = useState("agent");
 
  const viewAs = useMemo(() => {
   try {
@@ -30,7 +84,7 @@ const viewAgentName =
   viewAs?.name ||
   "Agent";
 
-  
+
 
   const [stats, setStats] = useState({
     adminCommission: 0,
@@ -58,6 +112,9 @@ const viewAgentName =
     successRate: 0,
   });
 
+  const [agentCommissionRows, setAgentCommissionRows] = useState([]);
+  const [merchantCommissionRows, setMerchantCommissionRows] = useState([]);
+
   const [modalTitle, setModalTitle] = useState("");
   const [details, setDetails] = useState([]);
   const [expanded, setExpanded] = useState({ 0: true });
@@ -83,6 +140,15 @@ const money = (value) => {
     if (viewAgentId) params.viewAgentId = viewAgentId;
 
     return params;
+  };
+
+  const detailsUrl = (type) => {
+    const params = buildParams();
+    return `/api/admin-dashboard/details?type=${type}${
+      params.viewAgentId ? `&viewAgentId=${params.viewAgentId}` : ""
+    }${params.startDate ? `&startDate=${params.startDate}` : ""}${
+      params.endDate ? `&endDate=${params.endDate}` : ""
+    }`;
   };
 
   const fetchDashboard = async () => {
@@ -112,6 +178,18 @@ const res = await api.get(url);
     fetchDashboard();
   }, [startDate, endDate, viewAgentId, merchantId]);
 
+  // Top-5 commission leaderboards for the chart panels — same endpoint/params
+  // the "Commission By Agent/Merchant" breakdown modal already uses.
+  useEffect(() => {
+    api.get(detailsUrl("commissionByAgent"))
+      .then((r) => setAgentCommissionRows(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setAgentCommissionRows([]));
+    api.get(detailsUrl("commissionByMerchant"))
+      .then((r) => setMerchantCommissionRows(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setMerchantCommissionRows([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, viewAgentId]);
+
   // Merchant list for the dashboard filter dropdown.
   useEffect(() => {
     api
@@ -136,15 +214,7 @@ const res = await api.get(url);
 
     try {
       setLoading(true);
-const params = buildParams();
-
-const url = `/api/admin-dashboard/details?type=${card.type}${
-  params.viewAgentId ? `&viewAgentId=${params.viewAgentId}` : ""
-}${
-  params.startDate ? `&startDate=${params.startDate}` : ""
-}${
-  params.endDate ? `&endDate=${params.endDate}` : ""
-}`;
+const url = detailsUrl(card.type);
 
 console.log("DETAIL URL:", url);
 
@@ -231,292 +301,206 @@ const res = await api.get(url);
       .filter(([key]) => !["name"].includes(key.toLowerCase()))
       .map(([key, value]) => (
         <div key={key} className="flex justify-between gap-4 mb-2">
-          <span className="text-[13px] text-[#475569]">
+          <span className="text-[13px] text-slate-500">
             {formatLabel(key)}
           </span>
 
-          <span className="text-[13px] text-black font-semibold text-right break-all">
+          <span className="text-[13px] text-navy-900 font-semibold text-right break-all">
             {formatValue(key, value)}
           </span>
         </div>
       ));
   };
 
-  const cards = [
-    // Primary KPIs, fixed order: payin → payin commission → payout → payout commission → success rate.
-    {
-      title: "Total Payin",
-      value: money(stats.totalPayinAmount),
-      localDetails: { amount: stats.totalPayinAmount },
-    },
-    {
-      title: "Payin Commission",
-      value: money(stats.payinCommission),
-      localDetails: { amount: stats.payinCommission },
-    },
-    {
-      title: "Total Payout",
-      value: money(stats.totalWithdrawal),
-      localDetails: { amount: stats.totalWithdrawal },
-    },
-    {
-      title: "Payout Commission",
-      value: money(stats.payoutCommission),
-      localDetails: { amount: stats.payoutCommission },
-    },
-    {
-      title: "Total Settlement Amount",
-      value: money(stats.totalSettlementAmount),
-      localDetails: { amount: stats.totalSettlementAmount },
-    },
-    {
-      title: "Settlement Remaining",
-      value: money(stats.settlementRemaining),
-      localDetails: { amount: stats.settlementRemaining },
-    },
-    {
-      title: "Total Merchant Commission",
-      value: money(stats.totalMerchantCommission),
-      localDetails: { amount: stats.totalMerchantCommission },
-    },
-    {
-      title: "Total Agent Commission",
-      value: money(stats.totalAgentCommission),
-      localDetails: { amount: stats.totalAgentCommission },
-    },
-    {
-      title: "Payin Success Rate",
-      value: `${Number(stats.successRate || 0)}%`,
-      noDetails: true,
-    },
-    {
-      title: "Settlement Remaining by Agent",
-      value: money(stats.settlementRemainingByAgent),
-      type: "settlementRemainingByAgent",
-    },
-    {
-      title: "Commission By Agent",
-      value: money(stats.commissionByAgent),
-      type: "commissionByAgent",
-    },
-    {
-      title: "Commission By Merchant",
-      value: money(stats.commissionByMerchant),
-      type: "commissionByMerchant",
-    },
-    {
-      title: "PayIn Amount By Agent",
-      value: money(stats.payinAmountByAgent),
-      type: "payinAmountByAgent",
-    },
-    {
-      title: "PayIn Amount By Merchant",
-      value: money(stats.payinAmountByMerchant),
-      type: "payinAmountByMerchant",
-    },
-    {
-      title: "PayIn Amount By Agent",
-      value: money(stats.payinAmountByAgent),
-      type: "payinAmountByAgent",
-    },
-    {
-      title: "PayIn Amount By Merchant",
-      value: money(stats.payinAmountByMerchant),
-      type: "payinAmountByMerchant",
-    },
-    {
-      title: "PayIn Transactions By Agent",
-      value: number(stats.payinTransactionsByAgent),
-      type: "payinTransactionsByAgent",
-    },
-    {
-      title: "PayIn Transactions By Merchant",
-      value: number(stats.payinTransactionsByMerchant),
-      type: "payinTransactionsByMerchant",
-    },
-    {
-      title: "PayIn Transactions By Agent",
-      value: number(stats.payinTransactionsByAgent),
-      type: "payinTransactionsByAgent",
-    },
-    {
-      title: "PayIn Transactions By Merchant",
-      value: number(stats.payinTransactionsByMerchant),
-      type: "payinTransactionsByMerchant",
-    },
-    {
-      title: "Total PayIn Transactions",
-      value: number(stats.totalPayinTransactions),
-      type: "totalPayinTransactions",
-    },
-    {
-      title: "Settlement Amount By Agent",
-      value: money(stats.settlementAmountByAgent),
-      type: "settlementAmountByAgent",
-    },
-    {
-      title: "Settlement Amount By Merchant",
-      value: money(stats.settlementAmountByMerchant),
-      type: "settlementAmountByMerchant",
-    },
-    {
-      title: "Settlement Amount By Agent",
-      value: money(stats.settlementAmountByAgent),
-      type: "settlementAmountByAgent",
-    },
-    {
-      title: "Settlement Transactions By Agent",
-      value: number(stats.settlementTransactionsByAgent),
-      type: "settlementTransactionsByAgent",
-    },
-    {
-      title: "Settlement Transactions By Merchant",
-      value: number(stats.settlementTransactionsByMerchant),
-      type: "settlementTransactionsByMerchant",
-    },
-    {
-      title: "Settlement Transactions By Agent",
-      value: number(stats.settlementTransactionsByAgent),
-      type: "settlementTransactionsByAgent",
-    },
-    {
-      title: "Total Settlement Transactions",
-      value: number(stats.totalSettlementTransactions),
-      type: "totalSettlementTransactions",
-    },
+  // Primary KPIs — one card per distinct metric, fixed order: payin → payin
+  // commission → payout → payout commission → settlement → commissions →
+  // success rate → transaction counts. Everything here is a unique figure;
+  // the "By Agent" / "By Merchant" breakdowns (which the old dashboard
+  // repeated as near-identical cards showing the very same totals) now live
+  // in the Breakdowns panel below instead of being duplicated here.
+  const summaryCards = [
+    { title: "Total Payin", value: money(stats.totalPayinAmount), icon: ArrowDownToLine, tone: "brand" },
+    { title: "Payin Commission", value: money(stats.payinCommission), icon: Percent },
+    { title: "Total Payout", value: money(stats.totalWithdrawal), icon: ArrowUpFromLine },
+    { title: "Payout Commission", value: money(stats.payoutCommission), icon: Percent },
+    { title: "Total Settlement Amount", value: money(stats.totalSettlementAmount), icon: Landmark },
+    { title: "Settlement Remaining", value: money(stats.settlementRemaining), icon: Wallet2 },
+    { title: "Total Merchant Commission", value: money(stats.totalMerchantCommission), icon: Store },
+    { title: "Total Agent Commission", value: money(stats.totalAgentCommission), icon: Users },
+    { title: "Payin Success Rate", value: `${Number(stats.successRate || 0)}%`, icon: CheckCircle2 },
+    { title: "Total Payin Transactions", value: number(stats.totalPayinTransactions), icon: Receipt },
+    { title: "Total Settlement Transactions", value: number(stats.totalSettlementTransactions), icon: ListChecks },
   ];
 
+  // Per-agent / per-merchant breakdown views. Each entry opens the exact same
+  // details modal + endpoint the old duplicate cards used (card.type is
+  // unchanged) — only the presentation (grouped list vs. a wall of cards)
+  // is different.
+  const breakdownItems = {
+    agent: [
+      { title: "Settlement Remaining By Agent", type: "settlementRemainingByAgent", desc: "Agent with the highest unsettled balance" },
+      { title: "Commission By Agent", type: "commissionByAgent", desc: "Commission earned per agent" },
+      { title: "PayIn Amount By Agent", type: "payinAmountByAgent", desc: "Pay-in volume per agent" },
+      { title: "PayIn Transactions By Agent", type: "payinTransactionsByAgent", desc: "Pay-in counts per agent" },
+      { title: "Settlement Amount By Agent", type: "settlementAmountByAgent", desc: "Settlement volume per agent" },
+      { title: "Settlement Transactions By Agent", type: "settlementTransactionsByAgent", desc: "Settlement counts per agent" },
+    ],
+    merchant: [
+      { title: "Commission By Merchant", type: "commissionByMerchant", desc: "Commission earned per merchant" },
+      { title: "PayIn Amount By Merchant", type: "payinAmountByMerchant", desc: "Pay-in volume per merchant" },
+      { title: "PayIn Transactions By Merchant", type: "payinTransactionsByMerchant", desc: "Pay-in counts per merchant" },
+      { title: "Settlement Amount By Merchant", type: "settlementAmountByMerchant", desc: "Settlement volume per merchant" },
+      { title: "Settlement Transactions By Merchant", type: "settlementTransactionsByMerchant", desc: "Settlement counts per merchant" },
+    ],
+  };
+
   return (
-    <div className="w-full px-3 sm:px-6 py-5 sm:py-8 bg-[#f8fafc] min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6 sm:mb-10">
-        <div>
-          <h1 className="text-2xl sm:text-[28px] font-bold text-black tracking-tight">
-            {viewAgentId ? `${viewAgentName} Dashboard` : "Admin Dashboard"}
-          </h1>
-
-          {viewAgentId && (
-            <p className="mt-1 text-sm font-semibold text-blue-700">
-              Viewing only selected agent data
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-          <div>
-            <label className="block text-[12px] font-semibold text-[#172554] mb-2">
-              Merchant
-            </label>
-            <select
-              value={merchantId}
-              onChange={(e) => setMerchantId(e.target.value)}
-              className="w-full sm:w-[200px] h-[44px] bg-white border border-gray-300 rounded-lg px-3 text-sm text-gray-700 outline-none focus:ring-1 focus:ring-[#2B7DE9] focus:border-[#2B7DE9]"
-            >
-              <option value="">All Merchants</option>
-              {merchants.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <DateViewFilter onChange={(r) => { setStartDate(r.startDate); setEndDate(r.endDate); }} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((card, index) => (
-          <div
-            key={index}
-            className="bg-white border border-[#d9e0ea] rounded-xl px-5 py-6 min-h-[134px]"
-          >
-            <p className="text-[14px] text-[#334155] font-medium mb-4">
-              {card.title}
-            </p>
-
-            <h2 className="text-[18px] leading-none font-extrabold text-black mb-6">
-              {card.value}
-            </h2>
-
-            {!card.noDetails && (
-              <button
-                type="button"
-                onClick={() => openDetails(card)}
-                className="text-[#0057ff] text-[14px] font-medium hover:underline"
+    <div className="w-full px-3 sm:px-6 py-5 sm:py-8 bg-white min-h-screen">
+      <PageHeader
+        title={viewAgentId ? `${viewAgentName} Dashboard` : "Admin Dashboard"}
+        subtitle={viewAgentId ? "Viewing only selected agent data" : undefined}
+        className="mb-6 sm:mb-10"
+        actions={
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-navy-800 mb-2">
+                Merchant
+              </label>
+              <select
+                value={merchantId}
+                onChange={(e) => setMerchantId(e.target.value)}
+                className="w-full sm:w-[200px] h-11 bg-white border border-slate-200 rounded-control px-3 text-sm text-navy-900 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15"
               >
-                Show More Details
-              </button>
-            )}
+                <option value="">All Merchants</option>
+                {merchants.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <DateViewFilter onChange={(r) => { setStartDate(r.startDate); setEndDate(r.endDate); }} />
           </div>
+        }
+      />
+
+      {/* ── Summary KPIs — one card per unique metric ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+        {summaryCards.map((card) => (
+          <KpiCard key={card.title} label={card.title} value={card.value} icon={card.icon} tone={card.tone || "light"} />
         ))}
       </div>
 
-      {modalTitle && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="w-full sm:w-[540px] max-h-[90vh] sm:max-h-[82vh] bg-white rounded-t-[18px] sm:rounded-[18px] px-5 pt-5 pb-4 relative">
+      {/* ── Top-5 commission charts ── */}
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <TopBreakdownChart
+          title="Top Agents by Commission"
+          subtitle="Highest commission-earning agents in the selected period"
+          rows={agentCommissionRows}
+          formatValue={money}
+          color={BAR_COLORS.agent}
+        />
+        <TopBreakdownChart
+          title="Top Merchants by Commission"
+          subtitle="Highest commission-earning merchants in the selected period"
+          rows={merchantCommissionRows}
+          formatValue={money}
+          color={BAR_COLORS.merchant}
+        />
+      </div>
+
+      {/* ── Detailed breakdowns, grouped by dimension instead of repeated as cards ── */}
+      <Card className="mt-8" padded>
+        <CardHeader
+          title="Breakdowns"
+          subtitle="Per-agent and per-merchant detail views"
+        />
+
+        <div className="mt-4 mb-2 inline-flex rounded-control bg-slate-100 p-1">
+          {["agent", "merchant"].map((tab) => (
             <button
+              key={tab}
               type="button"
-              onClick={closeModal}
-              className="absolute right-5 top-5 w-10 h-10 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#94a3b8]"
+              onClick={() => setBreakdownTab(tab)}
+              className={`rounded-control px-4 py-2 text-sm font-semibold capitalize transition ${
+                breakdownTab === tab ? "bg-white text-navy-900 shadow-card" : "text-slate-500 hover:text-navy-800"
+              }`}
             >
-              <X size={22} />
+              By {tab}
             </button>
-
-            <h2 className="text-[18px] font-bold text-black mb-4 pr-12">
-              {modalTitle}
-            </h2>
-
-            <div className="max-h-[66vh] overflow-y-auto pr-2">
-              {loading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
-              ) : details.length === 0 ? (
-                <div className="border border-[#d9e0ea] rounded-md">
-                  <button
-                    type="button"
-                    className="w-full px-3 py-3 flex items-center justify-between"
-                  >
-                    <span className="font-semibold text-black">Details</span>
-                    <ChevronDown size={18} />
-                  </button>
-
-                  <div className="border-t border-[#e5e7eb] px-3 py-3">
-                    <p className="text-sm text-gray-500">No details found</p>
-                  </div>
-                </div>
-              ) : (
-                details.map((item, index) => (
-                  <div
-                    key={index}
-                    className="border border-[#d9e0ea] rounded-md mb-3 overflow-hidden bg-white"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggleAccordion(index)}
-                      className="w-full px-3 py-3 flex items-center justify-between"
-                    >
-                      <span className="text-[15px] font-semibold text-black">
-                        {item.name || "Details"}
-                      </span>
-
-                      {expanded[index] ? (
-                        <ChevronDown size={18} />
-                      ) : (
-                        <ChevronUp size={18} />
-                      )}
-                    </button>
-
-                    {expanded[index] && (
-                      <div className="border-t border-[#e5e7eb] px-3 py-3">
-                        {renderFields(item)}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+
+        <div className="divide-y divide-slate-100">
+          {breakdownItems[breakdownTab].map((item) => (
+            <div key={item.type} className="flex items-center justify-between gap-4 py-3.5">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-navy-900 truncate">{item.title}</p>
+                <p className="text-xs text-slate-400 truncate">{item.desc}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openDetails(item)}
+                className="shrink-0 text-sm font-semibold text-brand-blue hover:underline"
+              >
+                View →
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Modal open={!!modalTitle} onClose={closeModal} title={modalTitle} maxWidth="max-w-xl">
+        <div className="max-h-[66vh] overflow-y-auto pr-1">
+          {loading ? (
+            <p className="text-sm text-slate-500">Loading...</p>
+          ) : details.length === 0 ? (
+            <div className="rounded-control border border-slate-200">
+              <button
+                type="button"
+                className="w-full px-3 py-3 flex items-center justify-between"
+              >
+                <span className="font-semibold text-navy-900">Details</span>
+                <ChevronDown size={18} className="text-slate-400" />
+              </button>
+
+              <div className="border-t border-slate-100 px-3 py-3">
+                <p className="text-sm text-slate-500">No details found</p>
+              </div>
+            </div>
+          ) : (
+            details.map((item, index) => (
+              <div
+                key={index}
+                className="rounded-control border border-slate-200 mb-3 overflow-hidden bg-white"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleAccordion(index)}
+                  className="w-full px-3 py-3 flex items-center justify-between"
+                >
+                  <span className="text-sm font-semibold text-navy-900">
+                    {item.name || "Details"}
+                  </span>
+
+                  {expanded[index] ? (
+                    <ChevronDown size={18} className="text-slate-400" />
+                  ) : (
+                    <ChevronUp size={18} className="text-slate-400" />
+                  )}
+                </button>
+
+                {expanded[index] && (
+                  <div className="border-t border-slate-100 px-3 py-3">
+                    {renderFields(item)}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

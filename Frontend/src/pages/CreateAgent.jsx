@@ -47,39 +47,39 @@ function CreateAgent() {
 
   return (
     <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
-      <h1 className="text-4xl font-bold mb-8 text-[#2B7DE9]">Admin Agent Form</h1>
+      <h1 className="text-4xl font-bold mb-8 text-[#1E88FF]">Admin Agent Form</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
           <label className="block mb-2 font-medium">Name *</label>
-          <input name="name" value={form.name} onChange={handleChange} required placeholder="Agent Name" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+          <input name="name" value={form.name} onChange={handleChange} required placeholder="Agent Name" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:border-[#1E88FF] outline-none" />
         </div>
 
         <div>
           <label className="block mb-2 font-medium">Commission Percent *</label>
-          <input name="commission_percent" value={form.commission_percent} onChange={handleChange} required type="number" step="0.01" min="0" max="100" placeholder="e.g 6" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+          <input name="commission_percent" value={form.commission_percent} onChange={handleChange} required type="number" step="0.01" min="0" max="100" placeholder="e.g 6" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:border-[#1E88FF] outline-none" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label className="block mb-2 font-medium">Max Payment Limit *</label>
-            <input name="max_payment_limit" value={form.max_payment_limit} onChange={handleChange} required type="number" min="0" placeholder="e.g 100000" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+            <input name="max_payment_limit" value={form.max_payment_limit} onChange={handleChange} required type="number" min="0" placeholder="e.g 100000" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:border-[#1E88FF] outline-none" />
           </div>
 
           <div>
             <label className="block mb-2 font-medium">Min Transaction Amount *</label>
-            <input name="min_transaction_amount" value={form.min_transaction_amount} onChange={handleChange} required type="number" min="0" placeholder="e.g 500" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+            <input name="min_transaction_amount" value={form.min_transaction_amount} onChange={handleChange} required type="number" min="0" placeholder="e.g 500" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:border-[#1E88FF] outline-none" />
           </div>
         </div>
 
         <div>
           <label className="block mb-2 font-medium">Username *</label>
-          <input name="username" value={form.username} onChange={handleChange} required placeholder="Username" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+          <input name="username" value={form.username} onChange={handleChange} required placeholder="Username" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:border-[#1E88FF] outline-none" />
         </div>
 
         <div>
           <label className="block mb-2 font-medium">Password *</label>
-          <input name="password" value={form.password} onChange={handleChange} required type="password" placeholder="Password" className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:border-[#2B7DE9] outline-none" />
+          <input name="password" value={form.password} onChange={handleChange} required type="password" placeholder="Password" className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:border-[#1E88FF] outline-none" />
         </div>
 
         <label className="flex items-center gap-3">
@@ -87,7 +87,7 @@ function CreateAgent() {
           Is Active
         </label>
 
-        <button className="bg-[#2B7DE9] hover:bg-[#0b2a5b] text-white px-8 py-3 rounded-xl font-semibold">Save Agent</button>
+        <button className="bg-[#1E88FF] hover:bg-[#0b2a5b] text-white px-8 py-3 rounded-xl font-semibold">Save Agent</button>
       </form>
     </div>
   );

@@ -34,7 +34,7 @@ const PI_STATUS = {
   Pending:         { cls: "bg-amber-100 text-amber-800 border-amber-200",    Icon: Clock,                label: "Pending" },
   "UTR Submitted": { cls: "bg-blue-100 text-blue-800 border-blue-200",       Icon: Timer,                label: "UTR Submitted" },
   Approved:        { cls: "bg-green-100 text-green-800 border-green-200",    Icon: CheckCircle2,         label: "Approved" },
-  Expired:         { cls: "bg-gray-100 text-gray-600 border-gray-200",       Icon: XCircle,              label: "Expired" },
+  Expired:         { cls: "bg-gray-100 text-gray-600 border-slate-200",       Icon: XCircle,              label: "Expired" },
   Failed:          { cls: "bg-red-100 text-red-800 border-red-200",          Icon: ShieldAlert,          label: "Failed" },
   Disputed:        { cls: "bg-purple-100 text-purple-800 border-purple-200", Icon: MessageCircleWarning, label: "Disputed" },
 };
@@ -153,14 +153,14 @@ export default function MasterPayTest() {
       <div className="max-w-5xl mx-auto space-y-5 px-3 sm:px-0 py-4 sm:py-0">
 
         {/* Header */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
                 <FlaskConical size={22} className="text-amber-600" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 mb-1">Test Mode — Agent Panel</h1>
+                <h1 className="text-xl font-extrabold tracking-tight text-navy-900 mb-1">Test Mode — Agent Panel</h1>
                 <p className="text-sm text-gray-500 leading-relaxed">
                   Drive virtual PayIn approvals exactly like production: review pending orders, verify any
                   submitted UTRs, then approve, expire, or fail each one to trigger the correct webhook.
@@ -200,8 +200,8 @@ export default function MasterPayTest() {
         </div>
 
         {/* Actionable PayIns */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-amber-600" />
               <span className="font-semibold text-gray-800">Pending / UTR Submitted Test PayIns</span>
@@ -295,7 +295,7 @@ export default function MasterPayTest() {
                               value={utrInputs[row.transaction_id] ?? (isUtrRow ? row.utr_number || "" : "")}
                               onChange={e => setUtrInputs(p => ({ ...p, [row.transaction_id]: e.target.value }))}
                               placeholder={isUtrRow ? row.utr_number || "UTR number" : "auto-generated if blank"}
-                              className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-400 font-mono"
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-400 font-mono"
                             />
                           </div>
 
@@ -351,7 +351,7 @@ export default function MasterPayTest() {
                           actioned[row.transaction_id] === "Approved"
                             ? "bg-green-50 text-green-700 border-green-200"
                             : actioned[row.transaction_id] === "Expired"
-                            ? "bg-gray-50 text-gray-600 border-gray-200"
+                            ? "bg-gray-50 text-gray-600 border-slate-200"
                             : "bg-red-50 text-red-700 border-red-200"
                         }`}>
                           {actioned[row.transaction_id]} ✓
@@ -368,14 +368,14 @@ export default function MasterPayTest() {
 
         {/* Settled PayIn history */}
         {settled.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
               <CheckCircle2 size={16} className="text-green-600" />
               <span className="font-semibold text-gray-800">Settled PayIn History</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs min-w-[600px]">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-slate-200">
                   <tr>
                     {["Ref","Amount","Status","UTR","Settled At","Webhook",""].map(h => (
                       <th key={h} className="px-4 py-3 text-left font-bold text-gray-600">{h}</th>
@@ -400,7 +400,7 @@ export default function MasterPayTest() {
                           <button
                             type="button"
                             onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
-                            className="text-[#2B7DE9] hover:underline flex items-center gap-1"
+                            className="text-[#1E88FF] hover:underline flex items-center gap-1"
                           >
                             {expandedId === row.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />} More
                           </button>

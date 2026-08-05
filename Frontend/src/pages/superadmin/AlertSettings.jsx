@@ -160,7 +160,7 @@ function RecipientsAndSettings({ notify }) {
           <button
             type="submit"
             disabled={adding || !newEmail.trim()}
-            className="shrink-0 rounded-lg bg-[#2B7DE9] text-white font-semibold px-4 py-2.5 text-sm hover:bg-[#0b2a5b] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="shrink-0 rounded-lg bg-[#1E88FF] text-white font-semibold px-4 py-2.5 text-sm hover:bg-[#0b2a5b] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <Plus size={16} /> {adding ? "Adding..." : "Add Recipient"}
           </button>
@@ -172,7 +172,7 @@ function RecipientsAndSettings({ notify }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-slate-50">
+                <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="text-left px-4 py-2.5 font-bold">Email</th>
                   <th className="text-left px-4 py-2.5 font-bold">Status</th>
                   <th className="text-left px-4 py-2.5 font-bold">Last Sent</th>
@@ -215,7 +215,7 @@ function RecipientsAndSettings({ notify }) {
                         <button
                           onClick={() => sendTest(r.id)}
                           disabled={testingId === r.id}
-                          className="text-[#2B7DE9] text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
+                          className="text-[#1E88FF] text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
                         >
                           <Send size={12} /> {testingId === r.id ? "Sending..." : "Test"}
                         </button>
@@ -307,7 +307,7 @@ function RecipientsAndSettings({ notify }) {
           <button
             type="submit"
             disabled={savingSettings}
-            className="rounded-lg bg-[#2B7DE9] text-white px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
+            className="rounded-lg bg-[#1E88FF] text-white px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
           >
             {savingSettings ? "Saving..." : "Save Alert Rules"}
           </button>
@@ -364,7 +364,7 @@ function DeliveryLog({ notify }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-slate-50">
+              <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-2.5 font-bold">Date</th>
                 <th className="text-left px-4 py-2.5 font-bold">Event</th>
                 <th className="text-left px-4 py-2.5 font-bold">Recipient</th>
@@ -441,7 +441,7 @@ function DisputesMonitor({ notify, highlightId }) {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-slate-50">
+                  <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="text-left px-4 py-2.5 font-bold">Ref</th>
                     <th className="text-left px-4 py-2.5 font-bold">Client</th>
                     <th className="text-left px-4 py-2.5 font-bold">Merchant</th>
@@ -504,7 +504,7 @@ function OverdueUtrMonitor({ notify, highlightId }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[880px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-slate-50">
+              <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-2.5 font-bold">Ref</th>
                 <th className="text-left px-4 py-2.5 font-bold">Client</th>
                 <th className="text-left px-4 py-2.5 font-bold">Merchant</th>
@@ -565,7 +565,7 @@ function AlertSettingsInner() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Email Alert Configuration</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Email Alert Configuration</h1>
         <p className="text-sm text-gray-500 mt-1">
           Configure who receives operational alerts (new disputes, overdue UTR submissions) across every client on the platform.
         </p>
@@ -578,7 +578,7 @@ function AlertSettingsInner() {
           <button
             key={t.id}
             onClick={() => changeTab(t.id)}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px ${tab === t.id ? "border-[#2B7DE9] text-[#2B7DE9]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+            className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px ${tab === t.id ? "border-[#1E88FF] text-[#1E88FF]" : "border-transparent text-slate-500 hover:text-slate-700"}`}
           >
             {t.label}
           </button>

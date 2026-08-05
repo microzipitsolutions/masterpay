@@ -6,7 +6,7 @@ function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
   if (!text) return null;
   return (
-    <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch {} }} className="ml-2 text-xs text-[#2B7DE9]">
+    <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1200); } catch {} }} className="ml-2 text-xs text-[#1E88FF]">
       <Copy size={11} className="inline" /> {copied ? "Copied" : "Copy"}
     </button>
   );
@@ -95,17 +95,17 @@ export default function WithdrawalConfigs() {
   return (
     <div className="px-2 py-2">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Withdrawal Configs</h1>
-        <button onClick={openNew} disabled={unconfigured.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-[#2B7DE9] text-white font-semibold px-4 py-2.5 hover:bg-[#0b2a5b] disabled:opacity-50">
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Withdrawal Configs</h1>
+        <button onClick={openNew} disabled={unconfigured.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-[#1E88FF] text-white font-semibold px-4 py-2.5 hover:bg-[#0b2a5b] disabled:opacity-50">
           <Plus size={16} /> Add Merchant Config
         </button>
       </div>
 
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+      <div className="bg-white rounded-card border border-slate-200 shadow-card overflow-x-auto">
         <table className="w-full min-w-[800px] text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
             <tr>
               <th className="text-left px-4 py-3 font-bold">Merchant</th>
               <th className="text-left px-4 py-3 font-bold">Max Payment</th>
@@ -177,7 +177,7 @@ export default function WithdrawalConfigs() {
                   <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${c.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{c.is_active ? "Yes" : "No"}</span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => openEdit(c)} className="inline-flex items-center gap-1 rounded bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5"><Pencil size={12} /> Edit</button>
+                  <button onClick={() => openEdit(c)} className="inline-flex items-center gap-1 rounded brand-gradient text-white text-xs font-semibold px-3 py-1.5"><Pencil size={12} /> Edit</button>
                 </td>
               </tr>
             ))}
@@ -322,7 +322,7 @@ export default function WithdrawalConfigs() {
 
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setEditing(null)} className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold">Cancel</button>
-              <button type="submit" disabled={saving} className="rounded-lg bg-[#2B7DE9] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">{saving ? "Saving..." : "Save"}</button>
+              <button type="submit" disabled={saving} className="rounded-lg bg-[#1E88FF] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">{saving ? "Saving..." : "Save"}</button>
             </div>
           </form>
         </div>

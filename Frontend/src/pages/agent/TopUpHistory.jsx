@@ -134,7 +134,7 @@ function TopUpHistory() {
 
   return (
     <AgentLayout>
-      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-[#f8fafc] min-h-screen">
+      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-white min-h-screen">
         <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">Top-Up History</h1>
 
         <WalletBalanceCard hideLinks />
@@ -164,7 +164,7 @@ function TopUpHistory() {
             <select
               value={status}
               onChange={(e) => { setPage(1); setStatus(e.target.value); }}
-              className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+              className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
             >
               <option value="">All</option>
               <option value="Pending">Pending</option>
@@ -177,7 +177,7 @@ function TopUpHistory() {
             <select
               value={method}
               onChange={(e) => { setPage(1); setMethod(e.target.value); }}
-              className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+              className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
             >
               <option value="">All</option>
               <option value="USDT">USDT</option>
@@ -186,10 +186,10 @@ function TopUpHistory() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-slate-50">
+              <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-5 py-3 font-bold">ID</th>
                 <th className="text-left px-5 py-3 font-bold">Method</th>
                 <th className="text-left px-5 py-3 font-bold">Top-Up Amount</th>
@@ -222,7 +222,7 @@ function TopUpHistory() {
                     <td className="px-5 py-4"><StatusBadge value={row.status} /></td>
                     <td className="px-5 py-4 text-xs text-slate-500 break-words [overflow-wrap:anywhere] max-w-[220px]">{row.rejection_reason || "-"}</td>
                     <td className="px-5 py-4">
-                      <button onClick={() => viewProof(row.id)} className="text-[#2B7DE9] underline text-xs">
+                      <button onClick={() => viewProof(row.id)} className="text-[#1E88FF] underline text-xs">
                         View Proof
                       </button>
                     </td>
@@ -257,10 +257,10 @@ function TopUpHistory() {
             Remaining/Settlement Amount on the main dashboard. Lives here
             (Top Up Funds section) per the "wallet detail only here" rule. */}
         <h2 className="text-xl font-bold text-black mt-10 mb-4">Wallet Ledger</h2>
-        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
           <table className="w-full min-w-[700px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-slate-50">
+              <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-5 py-3 font-bold">Date</th>
                 <th className="text-left px-5 py-3 font-bold">Type</th>
                 <th className="text-left px-5 py-3 font-bold">Amount</th>

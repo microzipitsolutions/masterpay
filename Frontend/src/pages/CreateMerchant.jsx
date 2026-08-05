@@ -69,7 +69,7 @@ function CreateMerchant() {
             onChange={handleChange}
             required
             placeholder="Merchant Name"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3"
           />
         </div>
 
@@ -82,7 +82,7 @@ function CreateMerchant() {
             required
             type="number"
             placeholder="e.g 2.5"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3"
           />
         </div>
 
@@ -90,7 +90,7 @@ function CreateMerchant() {
           <label className="block mb-2 font-medium">
             Assign Agents <span className="text-sm font-normal text-gray-500">(optional — leave unassigned to manage this merchant directly from Admin; payins balance across selected agents that still have available limit)</span>
           </label>
-          <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-300 p-2 space-y-1">
+          <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 p-2 space-y-1">
             {agents.length === 0 && (
               <p className="px-2 py-1 text-sm text-gray-400">No agents found</p>
             )}
@@ -124,7 +124,7 @@ function CreateMerchant() {
             onChange={handleChange}
             required
             placeholder="Username"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3"
           />
         </div>
 
@@ -137,7 +137,7 @@ function CreateMerchant() {
             required
             type="password"
             placeholder="Password"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3"
+            className="w-full border border-slate-200 rounded-xl px-4 py-3"
           />
         </div>
 
@@ -152,7 +152,7 @@ function CreateMerchant() {
           Is Active
         </label>
 
-        <button className="bg-[#2B7DE9] text-white px-8 py-3 rounded-xl font-semibold">
+        <button className="bg-[#1E88FF] text-white px-8 py-3 rounded-xl font-semibold">
           Save Merchant
         </button>
       </form>

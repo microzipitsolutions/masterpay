@@ -223,9 +223,9 @@ function AgentAccountsList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4 md:p-6">
+    <div className="min-h-screen bg-white p-4 md:p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-6">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">
           Agent Accounts List
         </h1>
 
@@ -248,7 +248,7 @@ function AgentAccountsList() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
 
@@ -261,7 +261,7 @@ function AgentAccountsList() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
 
@@ -274,7 +274,7 @@ function AgentAccountsList() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
           </div>
@@ -288,7 +288,7 @@ function AgentAccountsList() {
               <select
                 value={agentFilter}
                 onChange={(e) => setAgentFilter(e.target.value)}
-                className="h-11 w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
 
@@ -308,7 +308,7 @@ function AgentAccountsList() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-11 w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
                 <option value="true">Active</option>
@@ -331,10 +331,10 @@ function AgentAccountsList() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <div className="overflow-auto">
           <table className="w-full min-w-[1000px]">
-            <thead className="border-b border-gray-200">
+            <thead className="border-b border-slate-200">
               <tr>
                 {[
                   "ID",
@@ -418,7 +418,7 @@ function AgentAccountsList() {
                       <button
                         type="button"
                         onClick={() => setSelectedAccount(account)}
-                        className="font-medium text-[#2B7DE9] underline"
+                        className="font-medium text-[#1E88FF] underline"
                       >
                         View All
                       </button>
@@ -460,7 +460,7 @@ function AgentAccountsList() {
                   onClick={() => setCurrentPage(page)}
                   className={`rounded-lg px-4 py-2 text-sm font-semibold ${
                     currentPage === page
-                      ? "bg-[#2B7DE9] text-white"
+                      ? "bg-[#1E88FF] text-white"
                       : "border text-gray-700"
                   }`}
                 >
@@ -538,7 +538,7 @@ function AgentAccountsList() {
               <button
                 type="button"
                 onClick={() => setSelectedAccount(null)}
-                className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+                className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
               >
                 Close
               </button>
@@ -568,7 +568,7 @@ function AgentAccountsList() {
                   type="date"
                   value={exportStartDate}
                   onChange={(e) => setExportStartDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
 
@@ -581,7 +581,7 @@ function AgentAccountsList() {
                   type="date"
                   value={exportEndDate}
                   onChange={(e) => setExportEndDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
             </div>

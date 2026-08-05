@@ -47,7 +47,7 @@ function AdminAlertsBell() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-xl border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+        className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-xl border border-slate-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
         title="Alerts"
       >
         <Bell size={18} />
@@ -61,7 +61,7 @@ function AdminAlertsBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-80 sm:w-96 max-h-[70vh] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="absolute right-0 z-50 mt-2 w-80 sm:w-96 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
             <div className="sticky top-0 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
               <span className="text-sm font-bold text-gray-900">Alerts</span>
               {unreadCount > 0 && <span className="text-xs text-gray-500">{unreadCount} unread</span>}
@@ -78,7 +78,7 @@ function AdminAlertsBell() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-sm font-semibold text-gray-900">{a.title}</span>
-                    {!a.is_read && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#2B7DE9]" />}
+                    {!a.is_read && <span className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-[#1E88FF]" />}
                   </div>
                   <p className="mt-1 text-xs text-gray-600">{a.message}</p>
                   <p className="mt-1 text-[11px] text-gray-400">{formatDate(a.created_at)}</p>

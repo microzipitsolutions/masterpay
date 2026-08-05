@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import api from "../api";
 import Logo from "../components/Logo";
 import { useBranding } from "../context/BrandingContext";
 import { validateSignupForm } from "../utils/signupValidation";
+import Button from "../components/ui/Button";
+import AuthShell from "../components/ui/AuthShell";
 
 function Signup() {
   const navigate = useNavigate();
@@ -55,43 +57,47 @@ function Signup() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center px-4">
-        <div className="bg-white w-full max-w-md rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center">
-          <div className="mb-6">
+      <AuthShell>
+        <div className="rounded-card border border-slate-200 bg-white p-6 sm:p-8 text-center shadow-pop">
+          <div className="mb-6 flex justify-center">
             <Logo />
           </div>
-          <p className="text-gray-700 font-semibold mb-2">Account created successfully!</p>
-          <p className="text-gray-500 text-sm">Redirecting you to login…</p>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success-bg text-success">
+            <CheckCircle2 size={28} />
+          </div>
+          <p className="text-navy-900 font-bold mb-1">Account created successfully!</p>
+          <p className="text-slate-500 text-sm">Redirecting you to login…</p>
         </div>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] flex items-center justify-center px-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <div className="mb-6">
+    <AuthShell>
+      <div className="rounded-card border border-slate-200 bg-white p-6 sm:p-9 shadow-pop">
+        <div className="mb-7">
           <Logo />
         </div>
-        <p className="text-gray-500 mb-6 sm:mb-8">Create your account</p>
+        <h1 className="text-xl font-bold text-navy-900">Create your account</h1>
+        <p className="text-slate-500 mb-6 mt-1 text-sm">Sign up to start accepting and managing payments</p>
 
-        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-[#2B7DE9]">
+        <div className="mb-6 inline-flex items-center rounded-full bg-brand-blue-light px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide text-brand-blue-dark">
           Agent Signup
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-control border border-red-200 bg-danger-bg px-4 py-3 text-sm text-danger">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <input
             name="name"
             value={form.name}
             onChange={handleChange}
             placeholder="Full name / business name"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#dbe7f5] focus:border-[#2B7DE9] text-base"
+            className="w-full h-12 rounded-control border border-slate-200 px-4 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15 text-base"
             required
           />
           <input
@@ -99,7 +105,7 @@ function Signup() {
             value={form.username}
             onChange={handleChange}
             placeholder="Username"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#dbe7f5] focus:border-[#2B7DE9] text-base"
+            className="w-full h-12 rounded-control border border-slate-200 px-4 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15 text-base"
             required
           />
           <div className="relative">
@@ -110,16 +116,16 @@ function Signup() {
               placeholder="Password (min 6 characters)"
               type={showPassword ? "text" : "password"}
               minLength={6}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-[#dbe7f5] focus:border-[#2B7DE9]"
+              className="w-full h-12 rounded-control border border-slate-200 px-4 pr-12 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#dbe7f5] rounded"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
             </button>
           </div>
           <div className="relative">
@@ -130,35 +136,31 @@ function Signup() {
               placeholder="Confirm password"
               type={showConfirmPassword ? "text" : "password"}
               minLength={6}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 pr-12 outline-none focus:ring-2 focus:ring-[#dbe7f5] focus:border-[#2B7DE9]"
+              className="w-full h-12 rounded-control border border-slate-200 px-4 pr-12 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15"
               required
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword((visible) => !visible)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#dbe7f5] rounded"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
             >
-              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showConfirmPassword ? <EyeOff size={19} /> : <Eye size={19} />}
             </button>
           </div>
-          <button
-            disabled={loading}
-            className="w-full text-white py-3 rounded-xl font-semibold disabled:opacity-60"
-            style={{ backgroundColor: theme_color }}
-          >
+          <Button type="submit" loading={loading} className="w-full mt-2" size="lg">
             {loading ? "Creating account..." : "Sign up as Agent"}
-          </button>
+          </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-7 text-center text-sm text-slate-500">
           Already have an account?{" "}
           <Link to="/login" className="font-semibold" style={{ color: theme_color }}>
             Log in
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }
 

@@ -163,7 +163,7 @@ function ApproveAgentSettlements() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">
+      <h1 className="text-3xl font-extrabold tracking-tight text-navy-900">
         Approve Settlement Transactions
       </h1>
 
@@ -196,7 +196,7 @@ function ApproveAgentSettlements() {
               setSearch(e.target.value)
             }
             placeholder="Agent name, amount..."
-            className="w-full sm:w-60 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="w-full sm:w-60 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           />
         </div>
 
@@ -210,7 +210,7 @@ function ApproveAgentSettlements() {
             onChange={(e) =>
               setStatusFilter(e.target.value)
             }
-            className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           >
             <option value="">All</option>
 
@@ -239,7 +239,7 @@ function ApproveAgentSettlements() {
             onChange={(e) =>
               setStartDate(e.target.value)
             }
-            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           />
         </div>
 
@@ -254,13 +254,13 @@ function ApproveAgentSettlements() {
             onChange={(e) =>
               setEndDate(e.target.value)
             }
-            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           />
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card bg-white">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-slate-700">
             <tr>
@@ -373,7 +373,7 @@ function ApproveAgentSettlements() {
                               }))
                             }
                             placeholder="Add notes..."
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E88FF]"
                           />
 
                           <div className="flex gap-2">

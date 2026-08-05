@@ -118,21 +118,36 @@ function TopSummaryCards({ startDate, endDate, clientId }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading || !cards
           ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 h-28 animate-pulse" />
+              <div key={i} className="rounded-card border border-slate-200 bg-slate-50 p-5 h-28 animate-mp-pulse" />
             ))
-          : cards.map((c) => (
-              <div
-                key={c.key}
-                onClick={c.onClick}
-                className={`rounded-2xl border ${c.color} p-5 ${c.onClick ? "cursor-pointer hover:shadow-md transition" : ""}`}
-              >
-                <div className="flex items-center text-xs font-semibold opacity-75 mb-2">
-                  {c.label}
-                  <MetricInfoTooltip formula={c.formula} note={c.note} />
+          : cards.map((c, i) =>
+              i === 0 ? (
+                <div
+                  key={c.key}
+                  onClick={c.onClick}
+                  className={`relative overflow-hidden rounded-card p-5 text-white shadow-card bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 ${c.onClick ? "cursor-pointer hover:shadow-card-hover transition" : ""}`}
+                >
+                  <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full brand-gradient opacity-30 blur-2xl" />
+                  <div className="relative flex items-center text-xs font-semibold text-white/70 mb-2">
+                    {c.label}
+                    <MetricInfoTooltip formula={c.formula} note={c.note} />
+                  </div>
+                  <div className="relative text-2xl font-extrabold">{c.value}</div>
                 </div>
-                <div className="text-2xl font-bold">{c.value}</div>
-              </div>
-            ))}
+              ) : (
+                <div
+                  key={c.key}
+                  onClick={c.onClick}
+                  className={`rounded-card border ${c.color} p-5 shadow-card ${c.onClick ? "cursor-pointer hover:shadow-card-hover transition" : ""}`}
+                >
+                  <div className="flex items-center text-xs font-semibold opacity-75 mb-2">
+                    {c.label}
+                    <MetricInfoTooltip formula={c.formula} note={c.note} />
+                  </div>
+                  <div className="text-2xl font-bold">{c.value}</div>
+                </div>
+              )
+            )}
       </div>
 
       <BreakdownDrawer

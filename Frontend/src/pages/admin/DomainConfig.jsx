@@ -24,7 +24,7 @@ function StatusBadge({ status }) {
 export default function DomainConfig() {
   const [config, setConfig]         = useState(null);
   const [loadError, setLoadError]   = useState("");
-  const [form, setForm]             = useState({ domain_name: "", company_name: "", theme_color: "#2B7DE9" });
+  const [form, setForm]             = useState({ domain_name: "", company_name: "", theme_color: "#1E88FF" });
   const [logoFile, setLogoFile]     = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -45,7 +45,7 @@ export default function DomainConfig() {
       setForm({
         domain_name:  c.domain_name  || "",
         company_name: c.company_name || "",
-        theme_color:  c.theme_color  || "#2B7DE9",
+        theme_color:  c.theme_color  || "#1E88FF",
       });
       if (c.logo_url) setLogoPreview(fileUrl(c.logo_url));
     } catch (err) {
@@ -87,7 +87,7 @@ export default function DomainConfig() {
       setForm({
         domain_name:  res.data.domain_name  || "",
         company_name: res.data.company_name || "",
-        theme_color:  res.data.theme_color  || "#2B7DE9",
+        theme_color:  res.data.theme_color  || "#1E88FF",
       });
       setLogoFile(null);
       setSuccess("Settings saved successfully.");
@@ -217,7 +217,7 @@ export default function DomainConfig() {
               <input
                 value={form.theme_color}
                 onChange={(e) => setForm((f) => ({ ...f, theme_color: e.target.value }))}
-                placeholder="#2B7DE9"
+                placeholder="#1E88FF"
                 className="flex-1 h-11 rounded-lg border border-slate-300 px-3 text-sm font-mono outline-none focus:border-indigo-500"
               />
             </div>
@@ -312,7 +312,7 @@ export default function DomainConfig() {
                 type="button"
                 onClick={handleVerify}
                 disabled={verifying}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 hover:bg-indigo-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg brand-gradient text-white text-sm font-semibold px-4 py-2.5 hover:brightness-[1.06] disabled:opacity-50"
               >
                 <RefreshCw size={14} className={verifying ? "animate-spin" : ""} />
                 {verifying ? "Checking DNS…" : "Verify DNS"}
@@ -338,7 +338,7 @@ export default function DomainConfig() {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-lg brand-gradient px-6 py-2.5 text-sm font-semibold text-white hover:brightness-[1.06] disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save Changes"}
           </button>

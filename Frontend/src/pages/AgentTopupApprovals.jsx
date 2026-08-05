@@ -130,7 +130,7 @@ function AgentTopupApprovals() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Agent Top-Up Approvals</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Agent Top-Up Approvals</h1>
       <p className="text-sm text-gray-500">
         Review Agent top-up requests: payment method, amount, UTR/transaction hash, and proof —
         then approve to credit the agent's wallet or reject with a reason.
@@ -154,7 +154,7 @@ function AgentTopupApprovals() {
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && search_()}
             placeholder="Agent name / username..."
-            className="w-full sm:w-60 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="w-full sm:w-60 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           />
         </div>
         <div>
@@ -162,7 +162,7 @@ function AgentTopupApprovals() {
           <select
             value={status}
             onChange={(e) => { setPage(1); setStatus(e.target.value); }}
-            className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           >
             <option value="">All</option>
             <option value="Pending">Pending</option>
@@ -175,7 +175,7 @@ function AgentTopupApprovals() {
           <select
             value={method}
             onChange={(e) => { setPage(1); setMethod(e.target.value); }}
-            className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+            className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
           >
             <option value="">All</option>
             <option value="USDT">USDT</option>
@@ -184,13 +184,13 @@ function AgentTopupApprovals() {
         </div>
         <button
           onClick={search_}
-          className="rounded-xl bg-[#2B7DE9] text-white font-semibold px-5 py-3 text-sm hover:bg-[#0b2a5b]"
+          className="rounded-xl bg-[#1E88FF] text-white font-semibold px-5 py-3 text-sm hover:bg-[#0b2a5b]"
         >
           Search
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card bg-white">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-slate-700">
             <tr>
@@ -233,7 +233,7 @@ function AgentTopupApprovals() {
                     </td>
                     <td className="px-5 py-4 text-slate-500">{formatDate(row.submitted_at)}</td>
                     <td className="px-5 py-4">
-                      <button onClick={() => viewProof(row.id)} className="text-[#2B7DE9] underline text-xs">
+                      <button onClick={() => viewProof(row.id)} className="text-[#1E88FF] underline text-xs">
                         View
                       </button>
                     </td>
@@ -248,13 +248,13 @@ function AgentTopupApprovals() {
                               setReasonMap((prev) => ({ ...prev, [row.id]: e.target.value }))
                             }
                             placeholder="Rejection reason (required to reject)..."
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E88FF]"
                           />
                           <input
                             value={notesMap[row.id] || ""}
                             onChange={(e) => setNotesMap((prev) => ({ ...prev, [row.id]: e.target.value }))}
                             placeholder="Approval notes (optional)..."
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#2B7DE9]"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E88FF]"
                           />
                           <div className="flex gap-2">
                             <button

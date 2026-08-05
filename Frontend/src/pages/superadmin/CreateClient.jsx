@@ -6,7 +6,7 @@ import api from "../../api";
 export default function CreateClient() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    company_name: "", domain_name: "", theme_color: "#2B7DE9", status: "Active",
+    company_name: "", domain_name: "", theme_color: "#1E88FF", status: "Active",
   });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -59,10 +59,10 @@ export default function CreateClient() {
             </p>
             <div className="flex gap-3 justify-center">
               <button onClick={() => navigate("/superadmin/clients")}
-                className="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-indigo-700">
+                className="brand-gradient text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:brightness-[1.06]">
                 View All Clients
               </button>
-              <button onClick={() => { setSuccess(null); setForm({ company_name:"",domain_name:"",theme_color:"#2B7DE9",status:"Active" }); setLogoFile(null); setLogoPreview(null); }}
+              <button onClick={() => { setSuccess(null); setForm({ company_name:"",domain_name:"",theme_color:"#1E88FF",status:"Active" }); setLogoFile(null); setLogoPreview(null); }}
                 className="border border-slate-200 text-slate-700 px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-50">
                 Create Another
               </button>
@@ -110,7 +110,7 @@ export default function CreateClient() {
                   <input type="color" value={form.theme_color} onChange={e => set("theme_color", e.target.value)}
                     className="h-11 w-14 rounded-lg border border-slate-300 cursor-pointer p-1" />
                   <input value={form.theme_color} onChange={e => set("theme_color", e.target.value)}
-                    placeholder="#2B7DE9"
+                    placeholder="#1E88FF"
                     className="flex-1 h-11 rounded-lg border border-slate-300 px-3 text-sm font-mono outline-none focus:border-indigo-500" />
                 </div>
               </div>
@@ -142,7 +142,7 @@ export default function CreateClient() {
               Cancel
             </button>
             <button type="submit" disabled={loading}
-              className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">
+              className="brand-gradient text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:brightness-[1.06] disabled:opacity-60">
               {loading ? "Creating..." : "Create Client"}
             </button>
           </div>

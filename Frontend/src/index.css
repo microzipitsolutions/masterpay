@@ -1,8 +1,87 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   MasterPay design tokens
+   Palette: deep navy (#0B1530), vibrant blue (#1E88FF), teal (#14C7B7), white.
+   --brand-primary reads --brand-color (set per-tenant by BrandingContext.jsx
+   for white-label clients) and falls back to MasterPay blue, so shared
+   components stay on-brand for every tenant automatically.
+   ========================================================================= */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-navy-950: #05070f;
+  --color-navy-900: #0b1530;
+  --color-navy-800: #121e42;
+  --color-navy-700: #1a2a54;
+  --color-navy-600: #24386e;
+  --color-navy-500: #33498a;
+
+  --color-brand-blue: #1e88ff;
+  --color-brand-blue-dark: #0f6fe0;
+  --color-brand-blue-light: #e8f3ff;
+  --color-brand-teal: #14c7b7;
+  --color-brand-teal-dark: #0fa89b;
+  --color-brand-teal-light: #e5faf7;
+
+  --color-success: #16a34a;
+  --color-success-bg: #ecfdf3;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-info: #1e88ff;
+  --color-info-bg: #e8f3ff;
+
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+
+  --shadow-card: 0 1px 2px rgba(11, 21, 48, 0.04), 0 8px 24px -12px rgba(11, 21, 48, 0.10);
+  --shadow-card-hover: 0 4px 10px rgba(11, 21, 48, 0.06), 0 16px 32px -12px rgba(11, 21, 48, 0.16);
+  --shadow-pop: 0 12px 32px -8px rgba(11, 21, 48, 0.24);
+}
+
+:root {
+  --brand-primary: var(--brand-color, #1e88ff);
+}
+
+html, body, #root {
+  background: #ffffff;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
 button,
 a,
 [role="button"],
 .cursor-clickable {
   cursor: pointer;
+}
+
+/* Reusable brand gradient — primary buttons, KPI accents, active nav states. */
+.brand-gradient {
+  background-image: linear-gradient(135deg, var(--brand-primary, #1e88ff), var(--color-brand-teal));
+}
+
+.brand-gradient-text {
+  background-image: linear-gradient(135deg, var(--brand-primary, #1e88ff), var(--color-brand-teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes mp-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-mp-pulse {
+  animation: mp-pulse 1.6s ease-in-out infinite;
 }

@@ -44,7 +44,7 @@ await api.post("/api/agent/settlement-transactions", {
   return (
     <AgentLayout>
       <div className="flex justify-center px-3 sm:px-0 pt-4 sm:pt-8">
-        <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-5 sm:p-8 shadow">
+        <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-5 sm:p-8 shadow">
           <h1 className="mb-2 text-3xl font-bold">Create Settlement</h1>
           <p className="mb-6 text-sm text-gray-500">
             Submit a settlement request to your admin. The request will be pending until approved or rejected.
@@ -73,7 +73,7 @@ await api.post("/api/agent/settlement-transactions", {
                 value={amount}
                 min="1"
                 onChange={(e) => setAmount(e.target.value)}
-                className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#2B7DE9]"
+                className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -81,7 +81,7 @@ await api.post("/api/agent/settlement-transactions", {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full sm:w-auto rounded-lg bg-[#2B7DE9] px-8 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full sm:w-auto rounded-lg bg-[#1E88FF] px-8 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Submitting..." : "Submit Settlement Request"}
               </button>

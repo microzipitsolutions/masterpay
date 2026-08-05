@@ -198,9 +198,9 @@ function TransactionsPaymentProofList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4 md:p-6">
+    <div className="min-h-screen bg-white p-4 md:p-6">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-6">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">
           Transactions Payment Proof List
         </h1>
 
@@ -214,7 +214,7 @@ function TransactionsPaymentProofList() {
               <select
                 value={agentFilter}
                 onChange={(e) => setAgentFilter(e.target.value)}
-                className="h-11 w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
 
@@ -235,7 +235,7 @@ function TransactionsPaymentProofList() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
 
@@ -248,7 +248,7 @@ function TransactionsPaymentProofList() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 w-full sm:w-52 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-52 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ function TransactionsPaymentProofList() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="h-10 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-10 w-full sm:w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
           </div>
@@ -290,9 +290,9 @@ function TransactionsPaymentProofList() {
         </div>
       )}
 
-      <div className="overflow-auto rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[1150px]">
-          <thead className="border-b border-gray-200">
+          <thead className="border-b border-slate-200">
             <tr>
               {[
                 "ID",
@@ -349,7 +349,7 @@ function TransactionsPaymentProofList() {
                     <button
                       type="button"
                       onClick={() => setSelectedTransaction(row)}
-                      className="font-medium text-[#2B7DE9] underline"
+                      className="font-medium text-[#1E88FF] underline"
                     >
                       View All
                     </button>
@@ -380,7 +380,7 @@ function TransactionsPaymentProofList() {
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg bg-[#2B7DE9] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-[#1E88FF] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -416,7 +416,7 @@ function TransactionsPaymentProofList() {
               <button
                 type="button"
                 onClick={() => setSelectedTransaction(null)}
-                className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+                className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
               >
                 Close
               </button>
@@ -446,7 +446,7 @@ function TransactionsPaymentProofList() {
                   type="date"
                   value={exportStartDate}
                   onChange={(e) => setExportStartDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
 
@@ -459,7 +459,7 @@ function TransactionsPaymentProofList() {
                   type="date"
                   value={exportEndDate}
                   onChange={(e) => setExportEndDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
             </div>

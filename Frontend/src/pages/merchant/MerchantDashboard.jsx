@@ -1,9 +1,23 @@
 import { useEffect, useState } from "react";
 import api from "../../api";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ArrowDownToLine, HandCoins, Wallet, Receipt, Users, ListChecks, Percent } from "lucide-react";
 import MerchantLayout from "../../layouts/MerchantLayout";
 import DateViewFilter from "../../components/DateViewFilter";
 import { computeDateRange } from "../../utils/dateViewFilter";
+import { PageHeader, KpiCard, Modal } from "../../components/ui";
+
+const CARD_ICONS = {
+  "Total PayIn Amount": ArrowDownToLine,
+  "Total Settlement Amount": HandCoins,
+  "Settlement Remaining": Wallet,
+  "Total Outstanding Amount": Wallet,
+  "Total Withdrawal Amount": ArrowDownToLine,
+  "Total Commission Amount": HandCoins,
+  "Total PayIn Transactions": Receipt,
+  "PayIn Amount By Merchant": Users,
+  "PayIn Transactions By Merchant": ListChecks,
+  "Success Rate": Percent,
+};
 
 function MerchantDashboard() {
   const defaultRange = computeDateRange("current_month");
@@ -162,11 +176,11 @@ function MerchantDashboard() {
       .filter(([key]) => !["name"].includes(key.toLowerCase()))
       .map(([key, value]) => (
         <div key={key} className="flex justify-between gap-4 mb-2">
-          <span className="text-[13px] text-[#475569]">
+          <span className="text-[13px] text-slate-500">
             {formatLabel(key)}
           </span>
 
-          <span className="text-[13px] text-black font-semibold text-right break-all">
+          <span className="text-[13px] text-navy-900 font-semibold text-right break-all">
             {formatValue(key, value)}
           </span>
         </div>
@@ -236,33 +250,26 @@ function MerchantDashboard() {
 
   return (
     <MerchantLayout>
-      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-[#f8fafc] min-h-screen">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6 sm:mb-10">
-          <h1 className="text-2xl sm:text-[28px] font-bold text-black tracking-tight">
-            Merchant Dashboard
-          </h1>
-
-          <DateViewFilter onChange={(r) => { setStartDate(r.startDate); setEndDate(r.endDate); }} />
-        </div>
+      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-white min-h-screen">
+        <PageHeader
+          title="Merchant Dashboard"
+          actions={<DateViewFilter onChange={(r) => { setStartDate(r.startDate); setEndDate(r.endDate); }} />}
+          className="mb-6 sm:mb-10"
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-4">
           {cards.map((card, index) => (
-            <div
-              key={index}
-              className="bg-white border border-[#d9e0ea] rounded-xl px-5 py-6 min-h-[134px]"
-            >
-              <p className="text-[14px] text-[#334155] font-medium mb-4">
-                {card.title}
-              </p>
-
-              <h2 className="text-[18px] leading-none font-extrabold text-black mb-6">
-                {card.value}
-              </h2>
-
+            <div key={index}>
+              <KpiCard
+                label={card.title}
+                value={card.value}
+                icon={CARD_ICONS[card.title]}
+                tone={index === 0 ? "brand" : "light"}
+              />
               <button
                 type="button"
                 onClick={() => openDetails(card)}
-                className="text-[#0057ff] text-[14px] font-medium hover:underline"
+                className="mt-2 text-sm font-semibold text-brand-blue hover:underline"
               >
                 Show More Details
               </button>
@@ -270,72 +277,56 @@ function MerchantDashboard() {
           ))}
         </div>
 
-        {modalTitle && (
-          <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="w-full sm:w-[540px] max-h-[82vh] bg-white rounded-t-2xl sm:rounded-[18px] px-5 pt-5 pb-4 relative">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="absolute right-5 top-5 w-10 h-10 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#94a3b8]"
-              >
-                <X size={22} />
-              </button>
+        <Modal open={!!modalTitle} onClose={closeModal} title={modalTitle} maxWidth="max-w-xl">
+          <div className="max-h-[66vh] overflow-y-auto pr-1">
+            {loading ? (
+              <p className="text-sm text-slate-500">Loading...</p>
+            ) : details.length === 0 ? (
+              <div className="rounded-control border border-slate-200">
+                <button
+                  type="button"
+                  className="w-full px-3 py-3 flex items-center justify-between"
+                >
+                  <span className="font-semibold text-navy-900">Details</span>
+                  <ChevronDown size={18} className="text-slate-400" />
+                </button>
 
-              <h2 className="text-[18px] font-bold text-black mb-4 pr-12">
-                {modalTitle}
-              </h2>
-
-              <div className="max-h-[66vh] overflow-y-auto pr-2">
-                {loading ? (
-                  <p className="text-sm text-gray-500">Loading...</p>
-                ) : details.length === 0 ? (
-                  <div className="border border-[#d9e0ea] rounded-md">
-                    <button
-                      type="button"
-                      className="w-full px-3 py-3 flex items-center justify-between"
-                    >
-                      <span className="font-semibold text-black">Details</span>
-                      <ChevronDown size={18} />
-                    </button>
-
-                    <div className="border-t border-[#e5e7eb] px-3 py-3">
-                      <p className="text-sm text-gray-500">No details found</p>
-                    </div>
-                  </div>
-                ) : (
-                  details.map((item, index) => (
-                    <div
-                      key={index}
-                      className="border border-[#d9e0ea] rounded-md mb-3 overflow-hidden bg-white"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleAccordion(index)}
-                        className="w-full px-3 py-3 flex items-center justify-between"
-                      >
-                        <span className="text-[15px] font-semibold text-black">
-                          {item.name || "Details"}
-                        </span>
-
-                        {expanded[index] ? (
-                          <ChevronUp size={18} />
-                        ) : (
-                          <ChevronDown size={18} />
-                        )}
-                      </button>
-
-                      {expanded[index] && (
-                        <div className="border-t border-[#e5e7eb] px-3 py-3">
-                          {renderFields(item)}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
+                <div className="border-t border-slate-100 px-3 py-3">
+                  <p className="text-sm text-slate-500">No details found</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              details.map((item, index) => (
+                <div
+                  key={index}
+                  className="rounded-control border border-slate-200 mb-3 overflow-hidden bg-white"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleAccordion(index)}
+                    className="w-full px-3 py-3 flex items-center justify-between"
+                  >
+                    <span className="text-sm font-semibold text-navy-900">
+                      {item.name || "Details"}
+                    </span>
+
+                    {expanded[index] ? (
+                      <ChevronUp size={18} className="text-slate-400" />
+                    ) : (
+                      <ChevronDown size={18} className="text-slate-400" />
+                    )}
+                  </button>
+
+                  {expanded[index] && (
+                    <div className="border-t border-slate-100 px-3 py-3">
+                      {renderFields(item)}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
-        )}
+        </Modal>
       </div>
     </MerchantLayout>
   );

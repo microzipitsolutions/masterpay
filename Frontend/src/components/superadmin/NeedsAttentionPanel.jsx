@@ -93,7 +93,7 @@ function NeedsAttentionPanel() {
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6">
-      <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-4">
+      <h2 className="text-base font-bold text-navy-900 flex items-center gap-2 mb-4">
         <AlertTriangle size={18} className="text-amber-500" /> Needs Attention
       </h2>
 

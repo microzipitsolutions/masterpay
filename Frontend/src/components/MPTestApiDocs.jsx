@@ -77,7 +77,7 @@ function CopyBtn({ text, small = false }) {
       type="button"
       onClick={copy}
       title="Copy"
-      className={`flex items-center gap-1 text-gray-400 hover:text-[#2B7DE9] transition-colors flex-shrink-0 ${small ? "text-[10px]" : "text-xs"}`}
+      className={`flex items-center gap-1 text-gray-400 hover:text-[#1E88FF] transition-colors flex-shrink-0 ${small ? "text-[10px]" : "text-xs"}`}
     >
       {done ? <Check size={small ? 11 : 12} className="text-green-500" /> : <Copy size={small ? 11 : 12} />}
       {done ? "Copied!" : "Copy"}
@@ -112,8 +112,8 @@ function EndpointRow({ ep, apiKey }) {
 
       {/* Expandable cURL */}
       {open && (
-        <div className="mx-4 mb-3 rounded-lg border border-gray-200 overflow-hidden">
-          <div className="flex items-center justify-between bg-gray-100 border-b border-gray-200 px-3 py-1.5">
+        <div className="mx-4 mb-3 rounded-lg border border-slate-200 overflow-hidden">
+          <div className="flex items-center justify-between bg-gray-100 border-b border-slate-200 px-3 py-1.5">
             <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">cURL</span>
             <CopyBtn text={curl} small />
           </div>
@@ -131,14 +131,14 @@ export default function MPTestApiDocs({ apiKey }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
       {/* Collapsible header */}
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 bg-gray-50 border-b border-gray-200 px-5 py-3 text-left hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center gap-2 bg-gray-50 border-b border-slate-200 px-5 py-3 text-left hover:bg-gray-100 transition-colors"
       >
-        <Code size={14} className="text-[#2B7DE9] flex-shrink-0" />
+        <Code size={14} className="text-[#1E88FF] flex-shrink-0" />
         <span className="font-semibold text-gray-800 flex-1">Test Mode API Endpoints</span>
         <span className="text-[10px] text-gray-400 mr-2">{open ? "collapse" : "expand"}</span>
         {open ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}

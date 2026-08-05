@@ -7,7 +7,7 @@ import api from "../../api";
 export default function EditClient() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ company_name: "", domain_name: "", theme_color: "#2B7DE9", status: "Active" });
+  const [form, setForm] = useState({ company_name: "", domain_name: "", theme_color: "#1E88FF", status: "Active" });
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,7 +125,7 @@ export default function EditClient() {
               Cancel
             </button>
             <button type="submit" disabled={saving}
-              className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">
+              className="brand-gradient text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:brightness-[1.06] disabled:opacity-60">
               {saving ? "Saving..." : "Save Changes"}
             </button>
           </div>

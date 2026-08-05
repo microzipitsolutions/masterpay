@@ -1,48 +1,14 @@
 import { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
 import api from "../../api";
-import {
-  LayoutDashboard,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import Logo from "../Logo";
-
-function SubMenu({ title, children }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-gray-800 hover:bg-gray-50 font-semibold"
-      >
-        <span className="whitespace-nowrap">{title}</span>
-        {open ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
-      </button>
-
-      {open && <div className="ml-7 mt-1 space-y-1">{children}</div>}
-    </div>
-  );
-}
-
-function MenuLink({ to, children }) {
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `block rounded-lg px-4 py-2 text-sm transition-all ${
-          isActive
-            ? "bg-[#eef3fb] text-[#2B7DE9] font-semibold"
-            : "text-gray-600 hover:bg-[#eef3fb] hover:text-[#2B7DE9]"
-        }`
-      }
-    >
-      {children}
-    </NavLink>
-  );
-}
+import {
+  SidebarShell,
+  SidebarTopLink,
+  SidebarSubSection,
+  SidebarLink,
+  SidebarLabel,
+} from "../ui/SidebarShell";
 
 function MerchantSidebar() {
   // TEST MODE — visibility is controlled by the backend only.
@@ -56,80 +22,58 @@ function MerchantSidebar() {
   }, []);
 
   return (
-    <aside className="w-[280px] h-full min-h-screen bg-white border-r border-gray-200 p-5 overflow-y-auto">
-      <div className="mb-6">
-        <Logo />
+    <SidebarShell>
+      <div className="mb-6 pb-5 border-b border-white/10">
+        <Logo variant="dark" />
       </div>
-
-      <p className="text-xs text-gray-400 mb-4">MENU</p>
+      <SidebarLabel>Menu</SidebarLabel>
 
       <nav className="space-y-1 text-sm">
-        <NavLink
-          to="/merchant-dashboard"
-          className={({ isActive }) =>
-            `flex items-center gap-3 rounded-xl px-4 py-3 font-semibold transition-all ${
-              isActive
-                ? "bg-[#eef3fb] text-[#2B7DE9]"
-                : "text-gray-700 hover:bg-[#eef3fb] hover:text-[#2B7DE9]"
-            }`
-          }
-        >
-          <LayoutDashboard size={18} />
+        <SidebarTopLink to="/merchant-dashboard" icon={LayoutDashboard}>
           Dashboard
-        </NavLink>
+        </SidebarTopLink>
 
-        <SubMenu title="PayIn">
-          <MenuLink to="/merchant/payin/create">Create</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="PayIn">
+          <SidebarLink to="/merchant/payin/create">Create</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Transactions">
-          <MenuLink to="/merchant/transactions">List</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Transactions">
+          <SidebarLink to="/merchant/transactions">List</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Withdrawals">
-          <MenuLink to="/merchant/withdrawals">List & Create</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Withdrawals">
+          <SidebarLink to="/merchant/withdrawals">List & Create</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Settlement Accounts">
-          <MenuLink to="/merchant/settlement-accounts">List</MenuLink>
-          <MenuLink to="/merchant/settlement-accounts/create">Create</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Settlement Accounts">
+          <SidebarLink to="/merchant/settlement-accounts">List</SidebarLink>
+          <SidebarLink to="/merchant/settlement-accounts/create">Create</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Settlement Transactions">
-          <MenuLink to="/merchant/settlement-transactions">List</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Settlement Transactions">
+          <SidebarLink to="/merchant/settlement-transactions">List</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Support">
-          <MenuLink to="/merchant/tickets">Tickets</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Support">
+          <SidebarLink to="/merchant/tickets">Tickets</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Reports">
-          <MenuLink to="/merchant/daily-report">Daily Report</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Reports">
+          <SidebarLink to="/merchant/daily-report">Daily Report</SidebarLink>
+        </SidebarSubSection>
 
-        <SubMenu title="Developer">
-          <MenuLink to="/merchant-api-docs">API Documentation</MenuLink>
-          <MenuLink to="/merchant/sandbox">API Sandbox (PayIn)</MenuLink>
-          <MenuLink to="/merchant/withdrawal-sandbox">Withdrawal Sandbox</MenuLink>
-        </SubMenu>
+        <SidebarSubSection title="Developer">
+          <SidebarLink to="/merchant-api-docs">API Documentation</SidebarLink>
+          <SidebarLink to="/merchant/sandbox">API Sandbox (PayIn)</SidebarLink>
+          <SidebarLink to="/merchant/withdrawal-sandbox">Withdrawal Sandbox</SidebarLink>
+        </SidebarSubSection>
 
         {/* TEST MODE — shown only when backend confirms enabled for this client */}
         {showMpTest && (
-          <NavLink
-            to="/merchant/masterpay-test"
-            className={({ isActive }) =>
-              `flex items-center rounded-xl px-4 py-3 font-semibold transition-all ${
-                isActive
-                  ? "bg-[#eef3fb] text-[#2B7DE9]"
-                  : "text-gray-700 hover:bg-[#eef3fb] hover:text-[#2B7DE9]"
-              }`
-            }
-          >
-            Test Mode
-          </NavLink>
+          <SidebarTopLink to="/merchant/masterpay-test">Test Mode</SidebarTopLink>
         )}
       </nav>
-    </aside>
+    </SidebarShell>
   );
 }
 

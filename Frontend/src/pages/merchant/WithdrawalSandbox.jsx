@@ -54,8 +54,8 @@ function CodeBlock({ children, onCopy, copied }) {
 
 function SectionCard({ step, method, path, title, hint, children }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-3">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-gray-50 border-b border-slate-200 px-5 py-3 flex items-center gap-3">
         <span className="text-xs font-bold text-gray-400 bg-gray-200 px-2 py-0.5 rounded">{step}</span>
         <MethodBadge method={method} />
         <code className="text-sm font-mono text-gray-700 flex-1 truncate">{path}</code>
@@ -140,7 +140,7 @@ function CreatePayoutCard({ apiKey, onCreated }) {
       <div className="flex gap-2 bg-gray-100 p-1 rounded-xl w-fit mb-4">
         {[["upi", "UPI"], ["account", "Bank Account"]].map(([t, label]) => (
           <button key={t} type="button" onClick={() => switchType(t)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${type === t ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${type === t ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             {label}
           </button>
         ))}
@@ -164,7 +164,7 @@ Content-Type: application/json`}
             {bodyErr && <p className="text-xs text-red-500">{bodyErr}</p>}
           </div>
           <button type="button" onClick={simulate} disabled={loading}
-            className="w-full bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+            className="w-full bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
             {loading ? <><Loader2 size={15} className="animate-spin" /> Simulating…</> : "Simulate Request"}
           </button>
         </div>
@@ -173,7 +173,7 @@ Content-Type: application/json`}
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Simulated Response</p>
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-gray-400 py-8">
-              <Loader2 size={16} className="animate-spin text-[#2B7DE9]" />
+              <Loader2 size={16} className="animate-spin text-[#1E88FF]" />
               Generating mock response…
             </div>
           ) : result ? (
@@ -195,7 +195,7 @@ Content-Type: application/json`}
               </div>
             </div>
           ) : (
-            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400">
+            <div className="bg-gray-50 border border-dashed border-slate-200 rounded-xl p-6 text-center text-sm text-gray-400">
               Simulated response appears here
             </div>
           )}
@@ -290,7 +290,7 @@ function StatusCheckCard({ txData }) {
             <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide block mb-1.5">Transaction ID</label>
             <input readOnly value={txData?.txId || ""}
               placeholder="Auto-filled from Step 1"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono bg-gray-50 outline-none" />
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono bg-gray-50 outline-none" />
             {txData && <p className="text-xs text-emerald-600 mt-1">Auto-filled from Step 1</p>}
           </div>
 
@@ -337,12 +337,12 @@ function StatusCheckCard({ txData }) {
 
           <div className="flex gap-2">
             <button type="button" onClick={start} disabled={running || !txData}
-              className="flex-1 bg-[#2B7DE9] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+              className="flex-1 bg-[#1E88FF] hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
               {running ? <><Loader2 size={15} className="animate-spin" /> Progressing…</> : "Start Simulation"}
             </button>
             {stepIdx >= 0 && !running && (
               <button type="button" onClick={reset}
-                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
                 Reset
               </button>
             )}
@@ -372,7 +372,7 @@ function StatusCheckCard({ txData }) {
               )}
             </div>
           ) : (
-            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400">
+            <div className="bg-gray-50 border border-dashed border-slate-200 rounded-xl p-6 text-center text-sm text-gray-400">
               Start the simulation to see live status responses
             </div>
           )}
@@ -426,7 +426,7 @@ function WebhookCard({ txData, lastUtr }) {
         <div className="flex gap-2 bg-gray-100 p-1 rounded-xl w-fit">
           {[["cleared", "✓ Cleared"], ["rejected", "✕ Rejected"]].map(([s, label]) => (
             <button key={s} type="button" onClick={() => setScenario(s)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${scenario === s ? "bg-white text-[#2B7DE9] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${scenario === s ? "bg-white text-[#1E88FF] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               {label}
             </button>
           ))}
@@ -448,7 +448,7 @@ function WebhookCard({ txData, lastUtr }) {
           </div>
         )}
 
-        <div className="rounded-xl bg-gray-50 border border-gray-200 p-4 space-y-2">
+        <div className="rounded-xl bg-gray-50 border border-slate-200 p-4 space-y-2">
           <p className="text-xs font-semibold text-gray-700">Webhook handling guide</p>
           <ol className="list-decimal list-inside text-xs text-gray-600 space-y-1">
             <li>Verify the <code className="bg-gray-100 px-1 rounded">transactionId</code> matches a payout you created.</li>
@@ -467,7 +467,7 @@ function WebhookCard({ txData, lastUtr }) {
 function ReferenceDocs() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
       <button type="button" onClick={() => setOpen(v => !v)}
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
         <div className="flex items-center gap-2">
@@ -526,7 +526,7 @@ function ReferenceDocs() {
           {/* Status */}
           <div>
             <h4 className="font-bold text-sm text-gray-800 mb-2">GET /api/withdrawal/transactions/status?transactionId=ID</h4>
-            <div className="rounded-xl border border-gray-200 overflow-x-auto mb-3">
+            <div className="rounded-card border border-slate-200 shadow-card overflow-x-auto mb-3">
               <table className="w-full text-xs min-w-[380px]">
                 <thead className="bg-gray-50"><tr>
                   <th className="text-left px-3 py-2 font-bold">Status</th>
@@ -577,14 +577,14 @@ export default function WithdrawalSandbox() {
       <div className="max-w-5xl mx-auto space-y-6 px-3 sm:px-0 py-4 sm:py-0">
 
         {/* ── Header ── */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0">
                 <FlaskConical size={22} className="text-amber-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">Withdrawal Sandbox</h1>
+                <h1 className="text-2xl font-extrabold tracking-tight text-navy-900 mb-1">Withdrawal Sandbox</h1>
                 <p className="text-sm text-gray-500 max-w-xl leading-relaxed">
                   Simulate the full payout/withdrawal flow end-to-end — including request body, headers, status lifecycle, and webhook payloads.
                   <strong className="text-gray-700"> No API calls are made.</strong> All responses are generated locally in your browser.
@@ -614,7 +614,7 @@ export default function WithdrawalSandbox() {
         </div>
 
         {/* ── API Key display ── */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <label className="text-sm font-semibold text-gray-700 block mb-1.5">
             Withdrawal API Key{" "}
             <code className="text-xs font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">api-key header</code>
@@ -637,9 +637,9 @@ export default function WithdrawalSandbox() {
         <ReferenceDocs />
 
         {/* ── Diff from PayIn sandbox ── */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
           <h3 className="font-bold text-gray-800 mb-3 text-sm">How This Differs From the PayIn Sandbox</h3>
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card">
             <table className="w-full text-xs min-w-[480px]">
               <thead className="bg-gray-50">
                 <tr>

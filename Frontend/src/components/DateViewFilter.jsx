@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { VIEWS, computeDateRange, todayYMD, currentMonthYM } from "../utils/dateViewFilter";
 
 const fieldClass =
-  "w-full sm:w-[180px] h-[44px] bg-white border border-gray-300 rounded-lg px-3 text-sm text-gray-700 outline-none focus:ring-1 focus:ring-[#2B7DE9] focus:border-[#2B7DE9]";
+  "w-full sm:w-[180px] h-[44px] bg-white border border-slate-200 rounded-lg px-3 text-sm text-gray-700 outline-none focus:ring-1 focus:ring-[#1E88FF] focus:border-[#1E88FF]";
 const labelClass = "block text-[12px] font-semibold text-[#172554] mb-2";
 
 /**

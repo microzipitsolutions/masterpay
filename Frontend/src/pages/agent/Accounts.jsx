@@ -162,7 +162,7 @@ function Accounts() {
     <AgentLayout>
       <div className="space-y-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Accounts List</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Accounts List</h1>
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-full sm:w-auto">
@@ -172,7 +172,7 @@ function Accounts() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search..."
-                  className="w-full sm:w-56 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]"
+                  className="w-full sm:w-56 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]"
                 />
                 <button className="h-[50px] w-[50px] rounded-xl border border-slate-300 bg-white flex items-center justify-center">
                   <Search size={20} />
@@ -181,7 +181,7 @@ function Accounts() {
             </div>
             <div className="w-full sm:w-auto">
               <label className="block text-sm font-semibold text-slate-800 mb-2">Select Status</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]">
+              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]">
                 <option value="">All</option>
                 <option value="true">Active</option>
                 <option value="false">Inactive</option>
@@ -189,11 +189,11 @@ function Accounts() {
             </div>
             <div className="w-full sm:w-auto">
               <label className="block text-sm font-semibold text-slate-800 mb-2">Start Date</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]" />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]" />
             </div>
             <div className="w-full sm:w-auto">
               <label className="block text-sm font-semibold text-slate-800 mb-2">End Date</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]" />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]" />
             </div>
             <button
               onClick={() => downloadCsv("agent-accounts.csv", filteredAccounts)}
@@ -203,17 +203,17 @@ function Accounts() {
             </button>
             <button
               onClick={() => setShowCreate(true)}
-              className="w-full sm:w-auto rounded-lg bg-[#2B7DE9] px-4 py-3 text-sm font-semibold text-white"
+              className="w-full sm:w-auto rounded-lg bg-[#1E88FF] px-4 py-3 text-sm font-semibold text-white"
             >
               + Create Account
             </button>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
-              <tr className="border-b border-gray-200">
+              <tr className="border-b border-slate-200">
                 <th className="text-left px-6 py-4 font-bold">ID</th>
                 <th className="text-left px-6 py-4 font-bold">Bank Name</th>
                 <th className="text-left px-6 py-4 font-bold">IFSC Code</th>
@@ -247,14 +247,14 @@ function Accounts() {
                         <button
                           onClick={() => setEditAccount(item)}
                           title="Edit"
-                          className="w-9 h-9 rounded-full bg-[#eef3fb] text-[#2B7DE9] flex items-center justify-center"
+                          className="w-9 h-9 rounded-full bg-[#e8f3ff] text-[#1E88FF] flex items-center justify-center"
                         >
                           <Pencil size={16} />
                         </button>
                       </div>
                     </td>
                     <td className="px-6 py-6">
-                      <button onClick={() => setViewAccount(item)} className="text-[#2B7DE9] underline">
+                      <button onClick={() => setViewAccount(item)} className="text-[#1E88FF] underline">
                         View All
                       </button>
                     </td>
@@ -282,45 +282,45 @@ function Accounts() {
                 <div>
                   <label className="font-semibold text-sm">Account Number <span className="text-red-500">*</span></label>
                   <input name="account_number" value={createForm.account_number} onChange={handleCreateChange} required
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">IFSC Code <span className="text-red-500">*</span></label>
                   <input name="ifsc_code" value={createForm.ifsc_code} onChange={handleCreateChange} required placeholder="e.g IDIB000A180"
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Account Holder Name <span className="text-red-500">*</span></label>
                   <input name="account_holder_name" value={createForm.account_holder_name} onChange={handleCreateChange} required
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Upi Id <span className="text-red-500">*</span></label>
                   <input name="upi_id" value={createForm.upi_id} onChange={handleCreateChange} required
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Max Payment Limit <span className="text-red-500">*</span></label>
                   <input type="number" name="max_payment_limit" value={createForm.max_payment_limit} onChange={handleCreateChange} required
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Minimum Transaction Amount <span className="text-red-500">*</span></label>
                   <input type="number" name="min_transaction_amount" value={createForm.min_transaction_amount} onChange={handleCreateChange} required
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setCreateForm({ ...createForm, is_active: !createForm.is_active })}
-                    className={`w-12 h-7 rounded-full relative transition ${createForm.is_active ? "bg-[#2B7DE9]" : "bg-gray-300"}`}
+                    className={`w-12 h-7 rounded-full relative transition ${createForm.is_active ? "bg-[#1E88FF]" : "bg-gray-300"}`}
                   >
                     <span className={`absolute top-1 w-5 h-5 bg-white rounded-full transition ${createForm.is_active ? "left-6" : "left-1"}`} />
                   </button>
                   <span className="text-sm font-semibold">Is Active</span>
                 </div>
                 <div className="flex justify-end pt-5">
-                  <button type="submit" disabled={creating} className="bg-[#2B7DE9] text-white px-8 py-3 rounded-lg font-semibold disabled:opacity-60">
+                  <button type="submit" disabled={creating} className="bg-[#1E88FF] text-white px-8 py-3 rounded-lg font-semibold disabled:opacity-60">
                     {creating ? "Saving..." : "Save Account"}
                   </button>
                 </div>
@@ -344,45 +344,45 @@ function Accounts() {
                 <div>
                   <label className="font-semibold text-sm">Account Number <span className="text-red-500">*</span></label>
                   <input name="account_number" value={editAccount.account_number || ""} onChange={handleEditChange}
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">IFSC Code <span className="text-red-500">*</span></label>
                   <input name="ifsc_code" value={editAccount.ifsc_code || ""} onChange={handleEditChange}
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Account Holder Name <span className="text-red-500">*</span></label>
                   <input name="account_holder_name" value={editAccount.account_holder_name || ""} onChange={handleEditChange}
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Upi Id <span className="text-red-500">*</span></label>
                   <input name="upi_id" value={editAccount.upi_id || ""} onChange={handleEditChange}
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Max Payment Limit (Daily) <span className="text-red-500">*</span></label>
                   <input type="number" name="max_payment_limit" value={editAccount.max_payment_limit || ""} onChange={handleEditChange}
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div>
                   <label className="font-semibold text-sm">Minimum Transaction Amount <span className="text-red-500">*</span></label>
                   <input type="number" name="min_transaction_amount" value={editAccount.min_transaction_amount || ""} onChange={handleEditChange}
-                    className="mt-2 w-full h-12 border border-gray-300 rounded-lg px-4 outline-none focus:border-[#2B7DE9]" />
+                    className="mt-2 w-full h-12 border border-slate-200 rounded-lg px-4 outline-none focus:border-[#1E88FF]" />
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setEditAccount({ ...editAccount, is_active: !editAccount.is_active })}
-                    className={`w-12 h-7 rounded-full relative transition ${editAccount.is_active ? "bg-[#2B7DE9]" : "bg-gray-300"}`}
+                    className={`w-12 h-7 rounded-full relative transition ${editAccount.is_active ? "bg-[#1E88FF]" : "bg-gray-300"}`}
                   >
                     <span className={`absolute top-1 w-5 h-5 bg-white rounded-full transition ${editAccount.is_active ? "left-6" : "left-1"}`} />
                   </button>
                   <span className="text-sm font-semibold">Is Active</span>
                 </div>
                 <div className="flex justify-end pt-5">
-                  <button type="submit" className="bg-[#2B7DE9] text-white px-8 py-3 rounded-lg font-semibold">
+                  <button type="submit" className="bg-[#1E88FF] text-white px-8 py-3 rounded-lg font-semibold">
                     Save Account
                   </button>
                 </div>
@@ -404,7 +404,7 @@ function Accounts() {
 
               <h2 className="text-2xl font-bold mb-6">Account Details</h2>
 
-              <div className="border-l border-gray-200 pl-4">
+              <div className="border-l border-slate-200 pl-4">
                 {[
                   ["Bank Name", viewAccount.bank_name],
                   ["Ifsc Code", viewAccount.ifsc_code],
@@ -416,7 +416,7 @@ function Accounts() {
                   ["Status", String(viewAccount.is_active)],
                   ["Created", formatDate(viewAccount.created_at)],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between border-b border-gray-200 py-2">
+                  <div key={label} className="flex justify-between border-b border-slate-200 py-2">
                     <span className="font-semibold">{label}</span>
                     <span className="text-gray-600">{value || "-"}</span>
                   </div>
@@ -424,7 +424,7 @@ function Accounts() {
               </div>
 
               <div className="flex justify-end mt-8">
-                <button onClick={() => setViewAccount(null)} className="border border-gray-300 px-8 py-3 rounded-lg font-semibold">
+                <button onClick={() => setViewAccount(null)} className="border border-slate-200 px-8 py-3 rounded-lg font-semibold">
                   Close
                 </button>
               </div>

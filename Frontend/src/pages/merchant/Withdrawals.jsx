@@ -2,29 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, X, CheckCircle2, XCircle, RefreshCw, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import MerchantLayout from "../../layouts/MerchantLayout";
 import api from "../../api";
+import { Badge, PageHeader } from "../../components/ui";
+
+const STATUS_LABEL = {
+  pending: "Pending",
+  picked: "Picked",
+  utr_submitted: "UTR Submitted",
+  cleared: "Cleared ✓",
+  rejected: "Rejected",
+  refunded: "Refunded",
+};
 
 function StatusPill({ status }) {
-  const styles = {
-    pending: "bg-amber-100 text-amber-700",
-    picked: "bg-blue-100 text-blue-700",
-    utr_submitted: "bg-indigo-100 text-indigo-700",
-    cleared: "bg-green-100 text-green-700",
-    rejected: "bg-red-100 text-red-700",
-    refunded: "bg-purple-100 text-purple-700",
-  };
-  const label = {
-    pending: "Pending",
-    picked: "Picked",
-    utr_submitted: "UTR Submitted",
-    cleared: "Cleared ✓",
-    rejected: "Rejected",
-    refunded: "Refunded",
-  };
-  return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${styles[status] || "bg-gray-100 text-gray-700"}`}>
-      {label[status] || status}
-    </span>
-  );
+  return <Badge status={status}>{STATUS_LABEL[status] || status}</Badge>;
 }
 
 function formatDate(d) {
@@ -202,28 +192,31 @@ export default function MerchantWithdrawals() {
   return (
     <MerchantLayout>
       <div className="px-3 sm:px-6 py-4 sm:py-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Withdrawals</h1>
-          <div className="flex flex-wrap items-center gap-3">
-            {walletInfo && (
-              <div className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-right">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Wallet balance</div>
-                <div className={`text-lg font-bold leading-none ${walletInfo.balance < 250000 ? "text-red-600" : "text-emerald-600"}`}>
-                  ₹{walletInfo.balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+        <PageHeader
+          className="mb-6"
+          title="Withdrawals"
+          actions={
+            <>
+              {walletInfo && (
+                <div className="rounded-control border border-slate-200 bg-white px-4 py-2 text-right">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Wallet balance</div>
+                  <div className={`text-lg font-bold leading-none ${walletInfo.balance < 250000 ? "text-danger" : "text-success"}`}>
+                    ₹{walletInfo.balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-control border border-brand-teal/25 bg-brand-teal-light px-4 py-2 text-right">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-teal-dark/70">Total Paid Out</div>
+                <div className="text-lg font-bold leading-none text-brand-teal-dark">
+                  ₹{totalPaidOut.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
               </div>
-            )}
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-right">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total Paid Out</div>
-              <div className="text-lg font-bold leading-none text-emerald-700">
-                ₹{totalPaidOut.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-            <button onClick={() => { setShowCreate(true); fetchWallet(); }} className="inline-flex items-center gap-2 rounded-lg bg-[#2B7DE9] text-white font-semibold px-4 py-2.5 hover:bg-[#0b2a5b]">
-              <Plus size={16} /> New Withdrawal
-            </button>
-          </div>
-        </div>
+              <button onClick={() => { setShowCreate(true); fetchWallet(); }} className="inline-flex items-center gap-2 rounded-control brand-gradient text-white font-semibold px-4 py-2.5 shadow-[0_4px_14px_rgba(30,136,255,0.35)] hover:brightness-[1.06]">
+                <Plus size={16} /> New Withdrawal
+              </button>
+            </>
+          }
+        />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-4">
@@ -267,9 +260,9 @@ export default function MerchantWithdrawals() {
 
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+        <div className="bg-white rounded-card border border-slate-200 shadow-card overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3 font-bold">#</th>
                 <th className="text-left px-4 py-3 font-bold">Amount</th>
@@ -318,7 +311,7 @@ export default function MerchantWithdrawals() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => setViewItem(w)} className="text-[#2B7DE9] underline text-xs mr-2">View</button>
+                    <button onClick={() => setViewItem(w)} className="text-[#1E88FF] underline text-xs mr-2">View</button>
                     {w.status === "utr_submitted" && (
                       <>
                         <button disabled={acting === w.id} onClick={() => act(w.id, "approve")} className="inline-flex items-center gap-1 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50 mr-1">
@@ -351,7 +344,7 @@ export default function MerchantWithdrawals() {
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-control border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Previous
               </button>
@@ -359,7 +352,7 @@ export default function MerchantWithdrawals() {
                 type="button"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-control border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
               </button>
@@ -373,16 +366,16 @@ export default function MerchantWithdrawals() {
             <button
               type="button"
               onClick={() => setShowDisputeHistory((v) => !v)}
-              className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3 hover:text-[#2B7DE9]"
+              className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3 hover:text-[#1E88FF]"
             >
               <AlertTriangle size={15} className="text-orange-500" />
               Withdrawal Dispute History ({disputes.length})
               {showDisputeHistory ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
             {showDisputeHistory && (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+              <div className="bg-white rounded-card border border-slate-200 shadow-card overflow-x-auto">
                 <table className="w-full text-sm min-w-[640px]">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
                     <tr>
                       <th className="text-left px-4 py-3 font-bold">Ticket #</th>
                       <th className="text-left px-4 py-3 font-bold">Subject</th>
@@ -395,7 +388,7 @@ export default function MerchantWithdrawals() {
                   <tbody>
                     {disputes.map((t) => (
                       <tr key={t.id} className="border-b border-slate-100 last:border-b-0">
-                        <td className="px-4 py-3 font-mono text-xs font-semibold text-[#2B7DE9]">#{t.id}</td>
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-[#1E88FF]">#{t.id}</td>
                         <td className="px-4 py-3 text-xs max-w-[220px]">
                           <div className="font-semibold text-slate-700 truncate">{t.subject}</div>
                         </td>
@@ -462,8 +455,8 @@ export default function MerchantWithdrawals() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Payout Type</label>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setForm({ ...form, transaction_type: "upi" })} className={`flex-1 h-11 rounded-lg border text-sm font-semibold ${form.transaction_type === "upi" ? "border-[#2B7DE9] bg-blue-50 text-[#2B7DE9]" : "border-slate-300 bg-white text-slate-700"}`}>UPI</button>
-                    <button type="button" onClick={() => setForm({ ...form, transaction_type: "account" })} className={`flex-1 h-11 rounded-lg border text-sm font-semibold ${form.transaction_type === "account" ? "border-[#2B7DE9] bg-blue-50 text-[#2B7DE9]" : "border-slate-300 bg-white text-slate-700"}`}>Bank Account</button>
+                    <button type="button" onClick={() => setForm({ ...form, transaction_type: "upi" })} className={`flex-1 h-11 rounded-lg border text-sm font-semibold ${form.transaction_type === "upi" ? "border-[#1E88FF] bg-blue-50 text-[#1E88FF]" : "border-slate-300 bg-white text-slate-700"}`}>UPI</button>
+                    <button type="button" onClick={() => setForm({ ...form, transaction_type: "account" })} className={`flex-1 h-11 rounded-lg border text-sm font-semibold ${form.transaction_type === "account" ? "border-[#1E88FF] bg-blue-50 text-[#1E88FF]" : "border-slate-300 bg-white text-slate-700"}`}>Bank Account</button>
                   </div>
                 </div>
 
@@ -497,7 +490,7 @@ export default function MerchantWithdrawals() {
 
               <div className="mt-6 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowCreate(false)} className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700">Cancel</button>
-                <button type="submit" disabled={submitting} className="rounded-lg bg-[#2B7DE9] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">{submitting ? "Saving..." : "Create"}</button>
+                <button type="submit" disabled={submitting} className="rounded-lg brand-gradient text-white px-5 py-2.5 text-sm font-semibold shadow-[0_4px_14px_rgba(30,136,255,0.35)] disabled:opacity-50">{submitting ? "Saving..." : "Create"}</button>
               </div>
             </form>
           </div>

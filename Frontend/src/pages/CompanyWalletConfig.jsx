@@ -171,7 +171,7 @@ function CompanyWalletConfig({ extraParams = null, onSaved = null, title = "Comp
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{title}</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">{title}</h1>
       <p className="text-sm text-gray-500">
         Configure the USDT wallet and bank account Agents should send top-up funds to. Agents
         only ever see this tenant's details on their Top Up Funds page.
@@ -370,7 +370,7 @@ function CompanyWalletConfig({ extraParams = null, onSaved = null, title = "Comp
                       <button
                         type="button"
                         onClick={copyUpiId}
-                        className="mt-2 inline-flex items-center gap-1 text-[#2B7DE9] font-semibold"
+                        className="mt-2 inline-flex items-center gap-1 text-[#1E88FF] font-semibold"
                       >
                         <Copy size={11} /> {copiedUpi ? "Copied" : "Copy UPI ID"}
                       </button>
@@ -399,7 +399,7 @@ function CompanyWalletConfig({ extraParams = null, onSaved = null, title = "Comp
                 (!!form.bank_upi_id && upiStatus !== "valid") ||
                 (!!(form.usdt_wallet_address || "").trim() && !(form.usdt_network || "").trim())
               }
-              className="rounded-lg bg-[#2B7DE9] text-white px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
+              className="rounded-lg bg-[#1E88FF] text-white px-6 py-2.5 text-sm font-semibold disabled:opacity-50"
             >
               {saving ? "Saving..." : "Save Deposit Details"}
             </button>

@@ -402,7 +402,7 @@ const response = await fetch(
                         <button
                           type="button"
                           onClick={() => setSelectedTransaction(row)}
-                          className="text-[#2B7DE9] underline"
+                          className="text-[#1E88FF] underline"
                         >
                           View All
                         </button>
@@ -411,7 +411,7 @@ const response = await fetch(
                             href={fileUrl(row.proof)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="ml-3 text-[#2B7DE9] underline"
+                            className="ml-3 text-[#1E88FF] underline"
                           >
                             Proof
                           </a>
@@ -426,7 +426,7 @@ const response = await fetch(
         </div>
 
         {!loading && filteredTransactions.length > 0 && (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4">
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4">
             <p className="text-sm font-semibold text-gray-600">
               Page {currentPage}/{totalPages}
             </p>
@@ -436,7 +436,7 @@ const response = await fetch(
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Previous
               </button>
@@ -447,7 +447,7 @@ const response = await fetch(
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
                 disabled={currentPage === totalPages}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Next
               </button>
@@ -513,7 +513,7 @@ const response = await fetch(
                       href={fileUrl(selectedTransaction.proof)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#2B7DE9] underline"
+                      className="text-[#1E88FF] underline"
                     >
                       View / Download
                     </a>
@@ -527,7 +527,7 @@ const response = await fetch(
                 <button
                   type="button"
                   onClick={() => setSelectedTransaction(null)}
-                  className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+                  className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
                 >
                   Close
                 </button>

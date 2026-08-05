@@ -63,10 +63,10 @@ function BreakdownDrawer({ open, onClose, endpoint, filters, title, columns }) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-navy-900/40" onClick={onClose} />
       <div className="relative w-full max-w-2xl h-full bg-white shadow-xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+          <h2 className="text-lg font-bold text-navy-900">{title}</h2>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center">
             <X size={18} />
           </button>
@@ -79,7 +79,7 @@ function BreakdownDrawer({ open, onClose, endpoint, filters, title, columns }) {
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
                 <tr>
                   {columns.map((c) => (
                     <th key={c.key} className="text-left px-4 py-2.5 font-bold text-slate-700">{c.label}</th>

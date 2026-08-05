@@ -262,7 +262,7 @@
 
 // //                     <button
 // //                       onClick={() => openEditModal(agent)}
-// //                       className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#2B7DE9] transition hover:scale-105"
+// //                       className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#1E88FF] transition hover:scale-105"
 // //                     >
 // //                       <Pencil size={18} />
 // //                     </button>
@@ -422,7 +422,7 @@
 // //                     className="peer sr-only"
 // //                   />
 
-// //                   <div className="h-7 w-12 rounded-full bg-slate-300 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[#2B7DE9] peer-checked:after:translate-x-5"></div>
+// //                   <div className="h-7 w-12 rounded-full bg-slate-300 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[#1E88FF] peer-checked:after:translate-x-5"></div>
 // //                 </label>
 
 // //                 <span className="text-sm font-semibold text-[#101936]">
@@ -431,7 +431,7 @@
 // //               </div>
 
 // //               <div className="flex justify-end pt-2">
-// //                 <button className="rounded-lg bg-[#2B7DE9] px-8 py-4 text-sm font-bold text-white">
+// //                 <button className="rounded-lg bg-[#1E88FF] px-8 py-4 text-sm font-bold text-white">
 // //                   Save Agent
 // //                 </button>
 // //               </div>
@@ -725,7 +725,7 @@
 
 //                     <button
 //                       onClick={() => openEditModal(agent)}
-//                       className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#2B7DE9] transition hover:scale-105 cursor-pointer"
+//                       className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#1E88FF] transition hover:scale-105 cursor-pointer"
 //                     >
 //                       <Pencil size={18} />
 //                     </button>
@@ -887,7 +887,7 @@
 //                     className="peer sr-only"
 //                   />
 
-//                   <div className="h-7 w-12 rounded-full bg-slate-300 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[#2B7DE9] peer-checked:after:translate-x-5"></div>
+//                   <div className="h-7 w-12 rounded-full bg-slate-300 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[#1E88FF] peer-checked:after:translate-x-5"></div>
 //                 </label>
 
 //                 <span className="text-sm font-semibold text-[#101936]">
@@ -896,7 +896,7 @@
 //               </div>
 
 //               <div className="flex justify-end pt-2">
-//                 <button className="rounded-lg bg-[#2B7DE9] px-8 py-4 text-sm font-bold text-white cursor-pointer">
+//                 <button className="rounded-lg bg-[#1E88FF] px-8 py-4 text-sm font-bold text-white cursor-pointer">
 //                   Save Agent
 //                 </button>
 //               </div>
@@ -1265,7 +1265,7 @@ website: ${window.location.origin}/login`;
 
                     <button
                       onClick={() => openEditModal(agent)}
-                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#2B7DE9] transition hover:scale-105 cursor-pointer"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-[#dbe7f5] text-[#1E88FF] transition hover:scale-105 cursor-pointer"
                     >
                       <Pencil size={18} />
                     </button>
@@ -1421,7 +1421,7 @@ website: ${window.location.origin}/login`;
                     className="peer sr-only"
                   />
 
-                  <div className="h-7 w-12 rounded-full bg-slate-300 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[#2B7DE9] peer-checked:after:translate-x-5"></div>
+                  <div className="h-7 w-12 rounded-full bg-slate-300 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[#1E88FF] peer-checked:after:translate-x-5"></div>
                 </label>
 
                 <span className="text-sm font-semibold text-[#101936]">
@@ -1430,7 +1430,7 @@ website: ${window.location.origin}/login`;
               </div>
 
               <div className="flex justify-end pt-2">
-                <button className="rounded-lg bg-[#2B7DE9] px-8 py-4 text-sm font-bold text-white cursor-pointer">
+                <button className="rounded-lg bg-[#1E88FF] px-8 py-4 text-sm font-bold text-white cursor-pointer">
                   Save Agent
                 </button>
               </div>

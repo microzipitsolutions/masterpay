@@ -103,11 +103,11 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] flex overflow-hidden">
+    <div className="min-h-screen bg-white flex overflow-hidden">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-navy-900/50 z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

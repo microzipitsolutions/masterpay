@@ -68,15 +68,15 @@ export default function SuperAdminDashboard() {
 
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Super Admin Control Center</h1>
-          <p className="text-slate-600 text-sm mt-1">System-wide overview across every Client, Admin, Agent and Merchant.</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Super Admin Control Center</h1>
+          <p className="text-slate-500 text-sm mt-1">System-wide overview across every Client, Admin, Agent and Merchant.</p>
         </div>
         <div className="flex items-center gap-2">
           <GlobalSearch />
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="h-9 flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="h-9 flex items-center gap-1.5 rounded-control border border-slate-200 px-3 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:opacity-50"
           >
             <Download size={14} /> {exporting ? "Exporting..." : "Export"}
           </button>
@@ -86,9 +86,9 @@ export default function SuperAdminDashboard() {
       {/* Compact platform roster — unchanged endpoint, shrunk to a strip so the
           new financial sections lead the page (progressive disclosure). */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-        <RosterCard icon={ShieldCheck} label="Active Admins" value={roster?.active_admins} color="border-indigo-200 bg-indigo-50 text-indigo-900" />
-        <RosterCard icon={Users} label="Agents" value={roster?.agents} color="border-blue-200 bg-blue-50 text-blue-900" />
-        <RosterCard icon={Store} label="Merchants" value={roster?.merchants} color="border-green-200 bg-green-50 text-green-900" />
+        <RosterCard icon={ShieldCheck} label="Active Admins" value={roster?.active_admins} color="border-navy-500/20 bg-navy-900/[0.03] text-navy-900" />
+        <RosterCard icon={Users} label="Agents" value={roster?.agents} color="border-brand-blue/20 bg-brand-blue-light text-brand-blue-dark" />
+        <RosterCard icon={Store} label="Merchants" value={roster?.merchants} color="border-brand-teal/20 bg-brand-teal-light text-brand-teal-dark" />
         <RosterCard icon={TrendingUp} label="Total Txns" value={roster?.transactions?.toLocaleString?.("en-IN") ?? roster?.transactions} color="border-slate-200 bg-slate-50 text-slate-900" />
       </div>
 
@@ -105,12 +105,12 @@ export default function SuperAdminDashboard() {
 
       <Link
         to="/superadmin/hierarchy"
-        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 hover:shadow-md transition mb-6"
+        className="flex items-center justify-between rounded-card border border-slate-200 bg-white p-5 shadow-card hover:shadow-card-hover transition mb-6"
       >
         <span className="flex items-center gap-3">
-          <Network size={20} className="text-[#2B7DE9]" />
+          <Network size={20} className="text-brand-blue" />
           <span>
-            <span className="block text-sm font-bold text-slate-900">Hierarchy Overview</span>
+            <span className="block text-sm font-bold text-navy-900">Hierarchy Overview</span>
             <span className="block text-xs text-slate-500">Drill down Client → Admin → Agent/Merchant</span>
           </span>
         </span>
@@ -119,7 +119,7 @@ export default function SuperAdminDashboard() {
 
       <Link
         to="/superadmin/admins"
-        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 text-white font-semibold px-5 py-2.5 hover:bg-indigo-700"
+        className="inline-flex items-center gap-2 rounded-control brand-gradient text-white font-semibold px-5 py-2.5 shadow-[0_4px_14px_rgba(30,136,255,0.35)] hover:brightness-[1.06]"
       >
         Manage Admins
         <ArrowRight size={16} />

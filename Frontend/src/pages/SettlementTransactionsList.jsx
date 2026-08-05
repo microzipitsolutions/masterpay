@@ -316,10 +316,10 @@
 //   };
 
 //   return (
-//     <div className="min-h-screen bg-[#f5f7fb] p-8">
+//     <div className="min-h-screen bg-white p-8">
 //       <div className="mb-6">
 //         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-//           <h1 className="text-2xl font-bold text-gray-900">
+//           <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">
 //             Settlement Transaction List
 //           </h1>
 
@@ -341,7 +341,7 @@
 //                 placeholder="Search..."
 //                 value={search}
 //                 onChange={(e) => setSearch(e.target.value)}
-//                 className="h-11 w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//                 className="h-11 w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //               />
 //             </div>
 
@@ -354,7 +354,7 @@
 //                 type="date"
 //                 value={startDate}
 //                 onChange={(e) => setStartDate(e.target.value)}
-//                 className="h-11 w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//                 className="h-11 w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //               />
 //             </div>
 
@@ -367,7 +367,7 @@
 //                 type="date"
 //                 value={endDate}
 //                 onChange={(e) => setEndDate(e.target.value)}
-//                 className="h-11 w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//                 className="h-11 w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //               />
 //             </div>
 //           </div>
@@ -382,7 +382,7 @@
 //             <select
 //               value={statusFilter}
 //               onChange={(e) => setStatusFilter(e.target.value)}
-//               className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //             >
 //               <option value="">Search...</option>
 //               <option value="Pending">Pending</option>
@@ -399,7 +399,7 @@
 //             <select
 //               value={merchantFilter}
 //               onChange={(e) => setMerchantFilter(e.target.value)}
-//               className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //             >
 //               <option value="">Search...</option>
 
@@ -419,7 +419,7 @@
 //             <select
 //               value={agentFilter}
 //               onChange={(e) => setAgentFilter(e.target.value)}
-//               className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //             >
 //               <option value="">Search...</option>
 
@@ -439,7 +439,7 @@
 //             <select
 //               value={agentFilter}
 //               onChange={(e) => setAgentFilter(e.target.value)}
-//               className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//               className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //             >
 //               <option value="">Search...</option>
 
@@ -465,9 +465,9 @@
 //         </div>
 //       )}
 
-//       <div className="overflow-auto rounded-xl border border-gray-200 bg-white">
+//       <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
 //         <table className="w-full min-w-[1780px]">
-//           <thead className="border-b border-gray-200 bg-white">
+//           <thead className="border-b border-slate-200 bg-white">
 //             <tr>
 //               {[
 //                 "ID",
@@ -546,7 +546,7 @@
 //                       <button
 //                         type="button"
 //                         onClick={() => setSelectedTransaction(row)}
-//                         className="font-medium text-[#2B7DE9] underline"
+//                         className="font-medium text-[#1E88FF] underline"
 //                       >
 //                         View All
 //                       </button>
@@ -596,7 +596,7 @@
 //               <button
 //                 type="button"
 //                 onClick={() => setSelectedTransaction(null)}
-//                 className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+//                 className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
 //               >
 //                 Close
 //               </button>
@@ -621,7 +621,7 @@
 //                   value={utrNumber}
 //                   onChange={(e) => setUtrNumber(e.target.value)}
 //                   placeholder="Enter UTR Number"
-//                   className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+//                   className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
 //                 />
 //               </div>
 
@@ -641,7 +641,7 @@
 //                 <button
 //                   type="submit"
 //                   disabled={updatingUtr}
-//                   className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white disabled:opacity-60"
+//                   className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white disabled:opacity-60"
 //                 >
 //                   {updatingUtr ? "Updating..." : "Update Proof"}
 //                 </button>
@@ -672,7 +672,7 @@
 //                   type="date"
 //                   value={exportStartDate}
 //                   onChange={(e) => setExportStartDate(e.target.value)}
-//                   className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//                   className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //                 />
 //               </div>
 
@@ -685,7 +685,7 @@
 //                   type="date"
 //                   value={exportEndDate}
 //                   onChange={(e) => setExportEndDate(e.target.value)}
-//                   className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+//                   className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
 //                 />
 //               </div>
 //             </div>
@@ -992,10 +992,10 @@ function SettlementTransactionsList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4 md:p-6">
+    <div className="min-h-screen bg-white p-4 md:p-6">
       <div className="mb-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-extrabold tracking-tight text-navy-900">
             Settlement Transaction List
           </h1>
 
@@ -1017,7 +1017,7 @@ function SettlementTransactionsList() {
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
 
@@ -1030,7 +1030,7 @@ function SettlementTransactionsList() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
 
@@ -1043,7 +1043,7 @@ function SettlementTransactionsList() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full sm:w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               />
             </div>
           </div>
@@ -1058,7 +1058,7 @@ function SettlementTransactionsList() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             >
               <option value="">Search...</option>
               <option value="Pending">Pending</option>
@@ -1075,7 +1075,7 @@ function SettlementTransactionsList() {
             <select
               value={merchantFilter}
               onChange={(e) => setMerchantFilter(e.target.value)}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             >
               <option value="">Search...</option>
 
@@ -1095,7 +1095,7 @@ function SettlementTransactionsList() {
             <select
               value={agentFilter}
               onChange={(e) => setAgentFilter(e.target.value)}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             >
               <option value="">Search...</option>
 
@@ -1115,7 +1115,7 @@ function SettlementTransactionsList() {
             <select
               value={agentFilter}
               onChange={(e) => setAgentFilter(e.target.value)}
-              className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+              className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
             >
               <option value="">Search...</option>
 
@@ -1141,9 +1141,9 @@ function SettlementTransactionsList() {
         </div>
       )}
 
-      <div className="overflow-auto rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[1100px]">
-          <thead className="border-b border-gray-200 bg-white">
+          <thead className="border-b border-slate-200 bg-white">
             <tr>
               {[
                 "ID",
@@ -1206,7 +1206,7 @@ function SettlementTransactionsList() {
                       <button
                         type="button"
                         onClick={() => setSelectedTransaction(row)}
-                        className="font-medium text-[#2B7DE9] underline"
+                        className="font-medium text-[#1E88FF] underline"
                       >
                         View All
                       </button>
@@ -1256,7 +1256,7 @@ function SettlementTransactionsList() {
               <button
                 type="button"
                 onClick={() => setSelectedTransaction(null)}
-                className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+                className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
               >
                 Close
               </button>
@@ -1281,7 +1281,7 @@ function SettlementTransactionsList() {
                   value={utrNumber}
                   onChange={(e) => setUtrNumber(e.target.value)}
                   placeholder="Enter UTR Number"
-                  className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                  className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                 />
               </div>
 
@@ -1293,7 +1293,7 @@ function SettlementTransactionsList() {
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={(e) => setProofFile(e.target.files?.[0] || null)}
-                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#2B7DE9] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
+                  className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#1E88FF] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
                 />
                 {proofFile && (
                   <p className="mt-1 text-xs text-gray-500">Selected: {proofFile.name}</p>
@@ -1317,7 +1317,7 @@ function SettlementTransactionsList() {
                 <button
                   type="submit"
                   disabled={updatingUtr}
-                  className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white disabled:opacity-60"
+                  className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white disabled:opacity-60"
                 >
                   {updatingUtr ? "Updating..." : "Update Proof"}
                 </button>
@@ -1348,7 +1348,7 @@ function SettlementTransactionsList() {
                   type="date"
                   value={exportStartDate}
                   onChange={(e) => setExportStartDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
 
@@ -1361,7 +1361,7 @@ function SettlementTransactionsList() {
                   type="date"
                   value={exportEndDate}
                   onChange={(e) => setExportEndDate(e.target.value)}
-                  className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
             </div>

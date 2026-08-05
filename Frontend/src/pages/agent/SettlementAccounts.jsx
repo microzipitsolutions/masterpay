@@ -27,11 +27,11 @@ function Toolbar({ search, setSearch, status, setStatus, startDate, setStartDate
     <div className="flex flex-wrap items-end gap-3">
       <div className="w-full sm:w-auto">
         <label className="block text-sm font-semibold text-slate-800 mb-2">Search</label>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full sm:w-56 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full sm:w-56 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]" />
       </div>
       <div className="w-full sm:w-auto">
         <label className="block text-sm font-semibold text-slate-800 mb-2">Select Status</label>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full sm:w-44 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]">
           <option value="">All</option>
           <option value="Pending">Pending</option>
           <option value="Approved">Approved</option>
@@ -42,11 +42,11 @@ function Toolbar({ search, setSearch, status, setStatus, startDate, setStartDate
       </div>
       <div className="w-full sm:w-auto">
         <label className="block text-sm font-semibold text-slate-800 mb-2">Start Date</label>
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]" />
+        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]" />
       </div>
       <div className="w-full sm:w-auto">
         <label className="block text-sm font-semibold text-slate-800 mb-2">End Date</label>
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#2B7DE9]" />
+        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full sm:w-auto rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-[#1E88FF]" />
       </div>
       {onExport && <button onClick={onExport} className="w-full sm:w-auto rounded-lg bg-green-700 px-4 py-3 text-sm font-semibold text-white">Export ⬇</button>}
     </div>
@@ -117,11 +117,11 @@ function SettlementAccounts() {
     <AgentLayout>
       <div className="space-y-8">
         <div className="flex flex-wrap items-end justify-between gap-5">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settlement Accounts List</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Settlement Accounts List</h1>
           <Toolbar search={search} setSearch={setSearch} status={status} setStatus={setStatus} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate}  />
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card bg-white">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-100 text-slate-950">
               <tr>

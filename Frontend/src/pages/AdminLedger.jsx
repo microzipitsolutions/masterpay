@@ -58,7 +58,7 @@ export default function AdminLedger() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Ledger</h1><p className="mt-1 text-sm text-slate-500">Top-up funds received and commission-inclusive credits payable to Agents.</p></div>
+        <div><h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Admin Ledger</h1><p className="mt-1 text-sm text-slate-500">Top-up funds received and commission-inclusive credits payable to Agents.</p></div>
         <div className="flex gap-2"><button onClick={exportExcel} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white"><FileSpreadsheet size={16} /> Export Excel</button><button onClick={exportPdf} disabled={!rows.length} className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-50"><FileText size={16} /> Export PDF</button></div>
       </div>
       <div className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-5">
@@ -66,10 +66,10 @@ export default function AdminLedger() {
         <input type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2" aria-label="To date" />
         <select value={filters.agent_id} onChange={(e) => setFilters({ ...filters, agent_id: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2"><option value="">All Agents</option>{agents.map((a) => <option key={a.id} value={a.id}>{a.name} (@{a.username})</option>)}</select>
         <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2"><option value="">All Statuses</option><option>Pending</option><option>Approved</option><option>Rejected</option></select>
-        <button onClick={applyFilters} className="rounded-lg bg-[#2B7DE9] px-4 py-2 font-semibold text-white">Apply Filters</button>
+        <button onClick={applyFilters} className="rounded-lg bg-[#1E88FF] px-4 py-2 font-semibold text-white">Apply Filters</button>
       </div>
       {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card bg-white">
         <table className="min-w-[1300px] w-full text-left text-sm"><thead className="bg-slate-50"><tr>{["Receive From", "Pay To", "Top-Up", "Commission", "Final Amount", "Date & Time", "Reference", "Status", "Remarks"].map((h) => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}</tr></thead>
           <tbody>{loading ? <tr><td colSpan={9} className="py-10 text-center text-slate-400">Loading...</td></tr> : rows.length === 0 ? <tr><td colSpan={9} className="py-10 text-center text-slate-400">No ledger entries found.</td></tr> : rows.map((r) => <tr key={r.id} className="border-t border-slate-100"><td className="px-4 py-3">{r.receive_from}</td><td className="px-4 py-3">{r.pay_to}</td><td className="px-4 py-3">{money(r.amount)}</td><td className="px-4 py-3">{money(r.commission_amount)} <span className="text-xs text-slate-400">({Number(r.commission_percent || 0)}%)</span></td><td className="px-4 py-3 font-semibold">{money(r.payable_receivable_amount)}</td><td className="px-4 py-3">{dateTime(r.submitted_at)}</td><td className="px-4 py-3 font-mono text-xs">{r.transaction_reference}</td><td className="px-4 py-3">{r.status}</td><td className="px-4 py-3">{r.notes || r.rejection_reason || "-"}</td></tr>)}</tbody>
         </table>

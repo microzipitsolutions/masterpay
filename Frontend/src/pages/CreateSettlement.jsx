@@ -153,7 +153,7 @@
 
 //   return (
 //     <div className="flex justify-center pt-8">
-//       <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-8 shadow">
+//       <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-8 shadow">
 //         <h1 className="mb-4 text-3xl font-bold">Create Settlement</h1>
 
 //         {/* Tab toggle */}
@@ -178,7 +178,7 @@
 //                   placeholder="Amount"
 //                   value={formData.amount}
 //                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-//                   className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#2B7DE9]"
+//                   className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#1E88FF]"
 //                 />
 //               </div>
 //               <div>
@@ -187,7 +187,7 @@
 //                   value={formData.account}
 //                   onChange={(e) => setFormData({ ...formData, account: e.target.value })}
 //                   disabled={loadingAccounts}
-//                   className="mt-2 h-12 w-full rounded-lg border bg-white px-4 outline-none focus:border-[#2B7DE9] disabled:cursor-not-allowed disabled:bg-gray-100"
+//                   className="mt-2 h-12 w-full rounded-lg border bg-white px-4 outline-none focus:border-[#1E88FF] disabled:cursor-not-allowed disabled:bg-gray-100"
 //                 >
 //                   <option value="">{loadingAccounts ? "Loading accounts..." : "Select Option"}</option>
 //                   {accounts.map((account) => (
@@ -204,7 +204,7 @@
 //                 <button
 //                   type="submit"
 //                   disabled={saving || loadingAccounts}
-//                   className="rounded-lg bg-[#2B7DE9] px-8 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+//                   className="rounded-lg bg-[#1E88FF] px-8 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
 //                 >
 //                   {saving ? "Saving..." : "Save Settlement"}
 //                 </button>
@@ -457,7 +457,7 @@ function CreateSettlement() {
 
   return (
     <div className="flex justify-center pt-8">
-      <div className="w-full max-w-2xl rounded-xl border border-gray-200 bg-white p-8 shadow">
+      <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-8 shadow">
         <h1 className="mb-4 text-3xl font-bold">
           Create Settlement
         </h1>
@@ -497,7 +497,7 @@ function CreateSettlement() {
                       amount: e.target.value,
                     })
                   }
-                  className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#2B7DE9]"
+                  className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#1E88FF]"
                 />
               </div>
 
@@ -510,7 +510,7 @@ function CreateSettlement() {
                   type="date"
                   value={settlementDate}
                   onChange={(e) => setSettlementDate(e.target.value)}
-                  className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#2B7DE9]"
+                  className="mt-2 h-12 w-full rounded-lg border px-4 outline-none focus:border-[#1E88FF]"
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Optional — leave blank to use today's date.
@@ -534,7 +534,7 @@ function CreateSettlement() {
                     });
                   }}
                   disabled={loadingMerchants}
-                  className="mt-2 h-12 w-full rounded-lg border bg-white px-4 outline-none focus:border-[#2B7DE9]"
+                  className="mt-2 h-12 w-full rounded-lg border bg-white px-4 outline-none focus:border-[#1E88FF]"
                 >
                   <option value="">
                     {loadingMerchants
@@ -568,7 +568,7 @@ function CreateSettlement() {
                     })
                   }
                   disabled={loadingAccounts || !merchantId}
-                  className="mt-2 h-12 w-full rounded-lg border bg-white px-4 outline-none focus:border-[#2B7DE9] disabled:cursor-not-allowed disabled:bg-gray-100"
+                  className="mt-2 h-12 w-full rounded-lg border bg-white px-4 outline-none focus:border-[#1E88FF] disabled:cursor-not-allowed disabled:bg-gray-100"
                 >
                   <option value="">
                     {!merchantId
@@ -607,7 +607,7 @@ function CreateSettlement() {
                 <button
                   type="submit"
                   disabled={saving || loadingAccounts}
-                  className="rounded-lg bg-[#2B7DE9] px-8 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-lg bg-[#1E88FF] px-8 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving ? "Saving..." : "Save Settlement"}
                 </button>

@@ -299,9 +299,9 @@ const directMerchantId =
 
   return (
     <MerchantLayout>
-      <div className="min-h-[calc(100vh-80px)] bg-[#f5f7fb] px-3 sm:px-6 py-4 sm:py-8">
+      <div className="min-h-[calc(100vh-80px)] bg-white px-3 sm:px-6 py-4 sm:py-8">
         <div className="mx-auto max-w-3xl rounded-xl border border-gray-100 bg-white p-4 sm:p-8 shadow-sm">
-          <h1 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-bold text-gray-900">
+          <h1 className="mb-6 sm:mb-8 text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">
             Account Form
           </h1>
 
@@ -312,7 +312,7 @@ const directMerchantId =
                   ? "bg-green-50 text-green-700"
                   : messageType === "error"
                   ? "bg-red-50 text-red-700"
-                  : "bg-[#eef3fb] text-[#0b2a5b]"
+                  : "bg-[#e8f3ff] text-[#0b2a5b]"
               }`}
             >
               {message}
@@ -330,7 +330,7 @@ const directMerchantId =
                 value={formData.account_number}
                 onChange={handleChange}
                 placeholder="Account Number"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+                className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -345,17 +345,17 @@ const directMerchantId =
                 onChange={handleChange}
                 onBlur={handleIfscBlur}
                 placeholder="IFSC Code"
-                className={`w-full rounded-lg border px-4 py-3 text-sm uppercase outline-none focus:border-[#2B7DE9] ${
+                className={`w-full rounded-lg border px-4 py-3 text-sm uppercase outline-none focus:border-[#1E88FF] ${
                   formData.ifsc_code && ifscValid
                     ? "border-green-400"
                     : formData.ifsc_code && !ifscValid
-                    ? "border-gray-300"
-                    : "border-gray-300"
+                    ? "border-slate-200"
+                    : "border-slate-200"
                 }`}
               />
 
               {validatingIfsc && (
-                <p className="mt-2 text-xs font-medium text-[#2B7DE9]">
+                <p className="mt-2 text-xs font-medium text-[#1E88FF]">
                   Checking IFSC...
                 </p>
               )}
@@ -377,7 +377,7 @@ const directMerchantId =
                 value={formData.account_holder_name}
                 onChange={handleChange}
                 placeholder="Account Holder Name"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+                className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -391,7 +391,7 @@ const directMerchantId =
                 value={formData.upi_id}
                 onChange={handleChange}
                 placeholder="UPI ID"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+                className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -406,7 +406,7 @@ const directMerchantId =
                 value={formData.max_payment_limit}
                 onChange={handleChange}
                 placeholder="Max Payment Limit"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+                className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -421,7 +421,7 @@ const directMerchantId =
                 value={formData.min_transaction_amount}
                 onChange={handleChange}
                 placeholder="0"
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#2B7DE9]"
+                className="w-full rounded-lg border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -430,7 +430,7 @@ const directMerchantId =
                 type="button"
                 onClick={handleToggle}
                 className={`relative h-7 w-14 rounded-full transition ${
-                  formData.is_active ? "bg-[#2B7DE9]" : "bg-gray-300"
+                  formData.is_active ? "bg-[#1E88FF]" : "bg-gray-300"
                 }`}
               >
                 <span
@@ -449,7 +449,7 @@ const directMerchantId =
               <button
                 type="submit"
                 disabled={loading || findingMerchant || validatingIfsc}
-                className="rounded-lg bg-[#2B7DE9] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#0b2a5b] disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg bg-[#1E88FF] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#0b2a5b] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {findingMerchant
                   ? "Finding Merchant..."

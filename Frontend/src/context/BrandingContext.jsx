@@ -4,7 +4,7 @@ import { API_BASE_URL } from "../config/apiConfig";
 const DEFAULTS = {
   company_name: "MasterPay",
   logo_url: null,
-  theme_color: "#2B7DE9",
+  theme_color: "#1E88FF",
 };
 
 const BrandingContext = createContext({ ...DEFAULTS, loading: false });
@@ -86,12 +86,11 @@ export function BrandingProvider({ children }) {
             width: 40,
             height: 40,
             borderRadius: "50%",
-            border: "4px solid #e5e7eb",
-            borderTopColor: "#9ca3af",
-            animation: "rdpay-spin 0.8s linear infinite",
+            border: "4px solid #e8f3ff",
+            borderTopColor: "#1E88FF",
+            animation: "mp-spin 0.8s linear infinite",
           }}
         />
-        <style>{`@keyframes rdpay-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }

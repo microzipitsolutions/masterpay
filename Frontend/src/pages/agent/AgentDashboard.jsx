@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import AgentLayout from "../../layouts/AgentLayout";
 import api from "../../api";
-import { X, Info } from "lucide-react";
+import { Info, Wallet, Receipt, Percent, Clock, ArrowDownToLine, HandCoins, Users, ListChecks } from "lucide-react";
 import { Link } from "react-router-dom";
 import DateViewFilter from "../../components/DateViewFilter";
 import { computeDateRange } from "../../utils/dateViewFilter";
+import { PageHeader, KpiCard, Modal } from "../../components/ui";
 
 function AgentDashboard() {
   const defaultRange = computeDateRange("current_month");
@@ -96,63 +97,26 @@ function AgentDashboard() {
   };
 
   const cards = [
-    {
-      title: "Total PayIn Amount",
-      value: money(stats.totalPayinAmount),
-    },
-    {
-      title: "Total PayIn Transactions",
-      value: stats.totalPayinTransactions,
-    },
-    {
-      title: "Total Commission Amount",
-      value: money(stats.totalCommissionAmount),
-    },
-    {
-      title: "Total Outstanding Amount",
-      value: money(stats.totalOutstandingAmount),
-    },
-     {
-      title: "Total Withdrawal Amount",
-      value: money(stats.totalWithdrawalAmount),
-      onClick: openWithdrawalByAgent,
-    },
-    {
-      title: "Total Settlement Amount",
-      value: money(stats.totalSettlementAmount),
-      onClick: openSettlementByAgent,
-    },
-    {
-      title: "PayIn Amount By Agent",
-      value: money(stats.payinAmountByAgent),
-      onClick: openAgentAmount,
-    },
-    {
-      title: "PayIn Transactions By Agent",
-      value: stats.payinTransactionsByAgent,
-      onClick: openAgentTransactions,
-    },
-    {
-      title: "Success Rate",
-      value: `${stats.successRate || 0}%`,
-    },
-    {
-      title: "Pending Verifications",
-      value: stats.pendingVerifications,
-    },
-
+    { title: "Total PayIn Amount", value: money(stats.totalPayinAmount), icon: ArrowDownToLine, tone: "brand" },
+    { title: "Total PayIn Transactions", value: stats.totalPayinTransactions, icon: Receipt },
+    { title: "Total Commission Amount", value: money(stats.totalCommissionAmount), icon: HandCoins },
+    { title: "Total Outstanding Amount", value: money(stats.totalOutstandingAmount), icon: Wallet },
+    { title: "Total Withdrawal Amount", value: money(stats.totalWithdrawalAmount), onClick: openWithdrawalByAgent, icon: ArrowDownToLine },
+    { title: "Total Settlement Amount", value: money(stats.totalSettlementAmount), onClick: openSettlementByAgent, icon: HandCoins },
+    { title: "PayIn Amount By Agent", value: money(stats.payinAmountByAgent), onClick: openAgentAmount, icon: Users },
+    { title: "PayIn Transactions By Agent", value: stats.payinTransactionsByAgent, onClick: openAgentTransactions, icon: ListChecks },
+    { title: "Success Rate", value: `${stats.successRate || 0}%`, icon: Percent },
+    { title: "Pending Verifications", value: stats.pendingVerifications, icon: Clock },
   ];
 
   return (
     <AgentLayout>
-      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-[#f8fafc] min-h-screen">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Agent Dashboard
-          </h1>
-
-          <DateViewFilter onChange={(r) => { setStartDate(r.startDate); setEndDate(r.endDate); }} />
-        </div>
+      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-white min-h-screen">
+        <PageHeader
+          title="Agent Dashboard"
+          actions={<DateViewFilter onChange={(r) => { setStartDate(r.startDate); setEndDate(r.endDate); }} />}
+          className="mb-6 sm:mb-8"
+        />
 
         {/* Settlement Remaining / Settlement Amount — derived from the Agent
             wallet + ledger (see Top Up Funds for wallet balance, top-up
@@ -162,52 +126,42 @@ function AgentDashboard() {
             the settlement-transactions payout flow), so the two don't read
             as duplicates of each other. */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-6">
-            <p className="text-[14px] text-emerald-800 font-medium mb-2 flex items-center gap-1.5">
+          <div className="rounded-card border border-brand-teal/25 bg-brand-teal-light px-5 py-6">
+            <p className="text-sm text-brand-teal-dark font-semibold mb-2 flex items-center gap-1.5">
               Settlement Remaining
               <span title="Your current available funded balance — approved top-ups minus what's been consumed by routed Pay-Ins, refunded automatically if a Pay-In fails/expires/is rejected.">
-                <Info size={14} className="text-emerald-500" />
+                <Info size={14} className="text-brand-teal-dark/70" />
               </span>
             </p>
-            <h2 className="text-[22px] leading-none font-extrabold text-emerald-900">
+            <h2 className="text-2xl leading-none font-extrabold text-navy-900">
               {money(stats.settlementRemaining)}
             </h2>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-6">
-            <p className="text-[14px] text-slate-700 font-medium mb-2 flex items-center gap-1.5">
+          <div className="rounded-card border border-slate-200 bg-white px-5 py-6 shadow-card">
+            <p className="text-sm text-slate-600 font-semibold mb-2 flex items-center gap-1.5">
               Settlement Amount
               <span title="How much of your approved top-up balance has been consumed by Pay-Ins so far (net of any refunds).">
                 <Info size={14} className="text-slate-400" />
               </span>
             </p>
-            <h2 className="text-[22px] leading-none font-extrabold text-slate-900">
+            <h2 className="text-2xl leading-none font-extrabold text-navy-900">
               {money(stats.settlementAmount)}
             </h2>
           </div>
         </div>
-        <Link to="/agent/wallet/top-up" className="inline-block text-sm font-semibold text-[#2B7DE9] mb-6 hover:underline">
+        <Link to="/agent/wallet/top-up" className="inline-block text-sm font-semibold text-brand-blue mb-6 hover:underline">
           Top Up Funds →
         </Link>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {cards.map((card, index) => (
-            <div
-              key={index}
-              className="bg-white border border-gray-200 rounded-xl p-5 min-h-[140px]"
-            >
-              <p className="text-sm font-semibold text-gray-700 mb-4">
-                {card.title}
-              </p>
-
-              <h2 className="text-2xl font-bold text-black">
-                {card.value}
-              </h2>
-
+            <div key={index}>
+              <KpiCard label={card.title} value={card.value} icon={card.icon} tone={card.tone} />
               {card.onClick && (
                 <button
                   type="button"
                   onClick={card.onClick}
-                  className="mt-5 text-sm font-semibold text-blue-600 hover:underline"
+                  className="mt-2 text-sm font-semibold text-brand-blue hover:underline"
                 >
                   Show More Details
                 </button>
@@ -216,62 +170,45 @@ function AgentDashboard() {
           ))}
         </div>
 
-        {modalTitle && (
-          <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div className="w-full sm:w-[620px] max-h-[90vh] sm:max-h-[80vh] bg-white rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setModalTitle("");
-                  setModalRows([]);
-                }}
-                className="absolute right-5 top-5 rounded-full bg-gray-100 p-2"
-              >
-                <X size={20} />
-              </button>
+        <Modal open={!!modalTitle} onClose={() => { setModalTitle(""); setModalRows([]); }} title={modalTitle} maxWidth="max-w-2xl">
+          <div className="overflow-auto max-h-[60vh]">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {modalRows[0] &&
+                    Object.keys(modalRows[0]).map((key) => (
+                      <th
+                        key={key}
+                        className="text-left text-sm font-bold px-4 py-3 text-navy-900"
+                      >
+                        {key}
+                      </th>
+                    ))}
+                </tr>
+              </thead>
 
-              <h2 className="text-xl font-bold mb-5">{modalTitle}</h2>
-
-              <div className="overflow-auto max-h-[60vh]">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      {modalRows[0] &&
-                        Object.keys(modalRows[0]).map((key) => (
-                          <th
-                            key={key}
-                            className="text-left text-sm font-bold px-4 py-3"
-                          >
-                            {key}
-                          </th>
-                        ))}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {modalRows.length === 0 ? (
-                      <tr>
-                        <td className="px-4 py-4 text-sm text-gray-500">
-                          No details found
+              <tbody>
+                {modalRows.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-4 text-sm text-slate-500">
+                      No details found
+                    </td>
+                  </tr>
+                ) : (
+                  modalRows.map((row, index) => (
+                    <tr key={index} className="border-b border-slate-100">
+                      {Object.values(row).map((value, i) => (
+                        <td key={i} className="px-4 py-3 text-sm text-slate-700">
+                          {value}
                         </td>
-                      </tr>
-                    ) : (
-                      modalRows.map((row, index) => (
-                        <tr key={index} className="border-b">
-                          {Object.values(row).map((value, i) => (
-                            <td key={i} className="px-4 py-3 text-sm">
-                              {value}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </Modal>
       </div>
     </AgentLayout>
   );

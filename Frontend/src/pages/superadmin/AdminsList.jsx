@@ -115,9 +115,9 @@ export default function AdminsList() {
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+      <div className="bg-white rounded-card border border-slate-200 shadow-card overflow-x-auto">
         <table className="w-full min-w-[700px] text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
             <tr>
               <th className="text-left px-4 py-3 font-bold">ID</th>
               <th className="text-left px-4 py-3 font-bold">Username</th>
@@ -175,7 +175,7 @@ export default function AdminsList() {
                       <button
                         type="button"
                         onClick={() => openEdit(admin)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2"
+                        className="inline-flex items-center gap-1 rounded-lg brand-gradient hover:brightness-[1.06] text-white text-xs font-semibold px-3 py-2"
                       >
                         <Pencil size={12} />
                         Edit
@@ -248,7 +248,7 @@ export default function AdminsList() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-lg brand-gradient px-5 py-2.5 text-sm font-semibold text-white hover:brightness-[1.06] disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save"}
               </button>

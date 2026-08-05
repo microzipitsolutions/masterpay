@@ -20,7 +20,7 @@ function CopyButton({ text, label = "Copy" }) {
           setTimeout(() => setCopied(false), 1200);
         } catch {}
       }}
-      className="ml-2 text-xs text-[#2B7DE9]"
+      className="ml-2 text-xs text-[#1E88FF]"
     >
       <Copy size={11} className="inline" /> {copied ? "Copied" : label}
     </button>
@@ -133,7 +133,7 @@ function TopUpWallet() {
 
   return (
     <AgentLayout>
-      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-[#f8fafc] min-h-screen">
+      <div className="w-full px-3 sm:px-6 py-4 sm:py-8 bg-white min-h-screen">
         <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6">Top Up Funds</h1>
 
         <WalletBalanceCard hideLinks />
@@ -158,7 +158,7 @@ function TopUpWallet() {
                 type="button"
                 onClick={() => setMethod("USDT")}
                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold ${
-                  method === "USDT" ? "bg-[#2B7DE9] text-white" : "bg-slate-100 text-slate-700"
+                  method === "USDT" ? "bg-[#1E88FF] text-white" : "bg-slate-100 text-slate-700"
                 }`}
               >
                 USDT
@@ -167,7 +167,7 @@ function TopUpWallet() {
                 type="button"
                 onClick={() => setMethod("BANK_TRANSFER")}
                 className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold ${
-                  method === "BANK_TRANSFER" ? "bg-[#2B7DE9] text-white" : "bg-slate-100 text-slate-700"
+                  method === "BANK_TRANSFER" ? "bg-[#1E88FF] text-white" : "bg-slate-100 text-slate-700"
                 }`}
               >
                 Bank Transfer
@@ -277,7 +277,7 @@ function TopUpWallet() {
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#2B7DE9]"
+                  className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#1E88FF]"
                   placeholder="0.00"
                 />
                 {method === "USDT" && (
@@ -297,7 +297,7 @@ function TopUpWallet() {
                     type="text"
                     value={usdtTxHash}
                     onChange={(e) => setUsdtTxHash(e.target.value)}
-                    className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#2B7DE9] font-mono text-sm"
+                    className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#1E88FF] font-mono text-sm"
                     placeholder="0x..."
                   />
                 </div>
@@ -308,7 +308,7 @@ function TopUpWallet() {
                     type="text"
                     value={bankUtr}
                     onChange={(e) => setBankUtr(e.target.value)}
-                    className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#2B7DE9]"
+                    className="w-full h-12 rounded-lg border border-slate-300 px-4 outline-none focus:border-[#1E88FF]"
                     placeholder="UTR / reference number"
                   />
                 </div>
@@ -333,7 +333,7 @@ function TopUpWallet() {
               <button
                 type="submit"
                 disabled={submitting || !!configError || (method === "USDT" && (!config?.usdt_network || !(usdtRate > 0)))}
-                className="w-full rounded-lg bg-[#2B7DE9] text-white font-semibold px-4 py-3 text-sm hover:bg-[#0b2a5b] disabled:opacity-50"
+                className="w-full rounded-lg bg-[#1E88FF] text-white font-semibold px-4 py-3 text-sm hover:bg-[#0b2a5b] disabled:opacity-50"
               >
                 {submitting ? "Submitting..." : "Submit Top-Up Request"}
               </button>

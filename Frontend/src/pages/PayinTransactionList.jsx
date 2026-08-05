@@ -38,12 +38,13 @@ function formatDuration(from, to) {
 function getStatusClass(status) {
   const value = String(status || "").toLowerCase();
 
-  if (value === "approved") return "bg-green-100 text-green-700";
+  if (value === "approved") return "bg-success-bg text-success";
   if (value === "rejected" || value === "declined") {
-    return "bg-red-100 text-red-700";
+    return "bg-danger-bg text-danger";
   }
+  if (value === "disputed") return "bg-info-bg text-brand-blue-dark";
 
-  return "bg-yellow-100 text-yellow-700";
+  return "bg-warning-bg text-warning";
 }
 
 function escapeCsv(value) {
@@ -434,11 +435,11 @@ function PayinTransactionList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb]">
+    <div className="min-h-screen bg-white">
       <div className="p-4 md:p-6 overflow-x-hidden">
         <div className="mb-8">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">
               Payin Transaction List
             </h1>
 
@@ -446,7 +447,7 @@ function PayinTransactionList() {
               <button
                 type="button"
                 onClick={() => setShowExportModal(true)}
-                className="h-11 rounded-lg bg-green-600 px-5 text-sm font-semibold text-white"
+                className="h-11 rounded-control brand-gradient px-5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)] hover:brightness-[1.06]"
               >
                 Export
               </button>
@@ -459,7 +460,7 @@ function PayinTransactionList() {
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 w-48 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-11 w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
 
@@ -471,7 +472,7 @@ function PayinTransactionList() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="h-11 w-44 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-11 w-44 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
 
@@ -483,7 +484,7 @@ function PayinTransactionList() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="h-11 w-44 rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                  className="h-11 w-44 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                 />
               </div>
             </div>
@@ -497,7 +498,7 @@ function PayinTransactionList() {
               <select
                 value={merchantFilter}
                 onChange={(e) => setMerchantFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
                 {uniqueValues("merchant_name").map((name) => (
@@ -515,7 +516,7 @@ function PayinTransactionList() {
               <select
                 value={agentFilter}
                 onChange={(e) => setAgentFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
                 {uniqueValues("agent_name").map((name) => (
@@ -533,7 +534,7 @@ function PayinTransactionList() {
               <select
                 value={agentFilter}
                 onChange={(e) => setAgentFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
                 {uniqueValues("agent_name").map((name) => (
@@ -551,7 +552,7 @@ function PayinTransactionList() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
               >
                 <option value="">Search...</option>
                 <option value="Pending">Pending</option>
@@ -575,9 +576,9 @@ function PayinTransactionList() {
           </div>
         )}
 
-        <div className="overflow-auto rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-auto rounded-card border border-slate-200 bg-white shadow-card">
           <table className="w-full min-w-[1000px]">
-            <thead className="border-b border-gray-200 bg-white">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur">
               <tr>
                 {[
                   "ID",
@@ -657,7 +658,7 @@ function PayinTransactionList() {
                       <button
                         type="button"
                         onClick={() => setSelectedTransaction(row)}
-                        className="font-medium text-[#2B7DE9] underline"
+                        className="font-medium text-[#1E88FF] underline"
                       >
                         View All
                       </button>
@@ -668,7 +669,7 @@ function PayinTransactionList() {
                           <button
                             type="button"
                             onClick={() => openEdit(row)}
-                            className="rounded-full bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                            className="rounded-full brand-gradient px-3 py-2 text-sm font-semibold text-white hover:brightness-[1.06]"
                           >
                             Edit
                           </button>
@@ -695,17 +696,17 @@ function PayinTransactionList() {
         </div>
 
         {filteredTransactions.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-1">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-card border border-slate-200 bg-white px-5 py-4 shadow-card">
             <div className="flex items-center gap-3">
-              <p className="text-sm text-gray-600">
-                Page {currentPage} / {totalPages} · {filteredTransactions.length} total
+              <p className="text-sm font-medium text-slate-500">
+                Page <span className="font-semibold text-navy-900">{currentPage}</span> / {totalPages} · {filteredTransactions.length} total
               </p>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
+              <label className="flex items-center gap-2 text-sm text-slate-500">
                 Rows:
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-[#2B7DE9]"
+                  className="rounded-control border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-brand-blue"
                 >
                   {[50, 100, 200, 500].map((n) => (
                     <option key={n} value={n}>{n}</option>
@@ -718,7 +719,7 @@ function PayinTransactionList() {
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => p - 1)}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-control border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Previous
               </button>
@@ -726,7 +727,7 @@ function PayinTransactionList() {
                 type="button"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => p + 1)}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-control border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
               </button>
@@ -846,7 +847,7 @@ function PayinTransactionList() {
                 <button
                   type="button"
                   onClick={() => setSelectedTransaction(null)}
-                  className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white"
+                  className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white"
                 >
                   Close
                 </button>
@@ -874,7 +875,7 @@ function PayinTransactionList() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, amount: e.target.value })
                     }
-                    className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm outline-none focus:border-[#2B7DE9]"
+                    className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-[#1E88FF]"
                   />
                 </div>
 
@@ -887,7 +888,7 @@ function PayinTransactionList() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, utr_number: e.target.value })
                     }
-                    className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm font-mono outline-none focus:border-[#2B7DE9]"
+                    className="h-11 w-full rounded-lg border border-slate-200 px-3 text-sm font-mono outline-none focus:border-[#1E88FF]"
                   />
                   <p className="mt-1 text-[11px] text-gray-400">
                     UTR is unique system-wide — saving a UTR already used elsewhere
@@ -904,7 +905,7 @@ function PayinTransactionList() {
                     onChange={(e) =>
                       setEditForm({ ...editForm, status: e.target.value })
                     }
-                    className="h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm outline-none"
+                    className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none"
                   >
                     {!["Pending", "Approved", "Rejected"].includes(
                       editForm.status,
@@ -927,7 +928,7 @@ function PayinTransactionList() {
                 <button
                   type="button"
                   onClick={() => setEditTxn(null)}
-                  className="rounded-lg border border-gray-300 px-5 py-2 font-semibold text-gray-700"
+                  className="rounded-lg border border-slate-200 px-5 py-2 font-semibold text-gray-700"
                 >
                   Cancel
                 </button>
@@ -935,7 +936,7 @@ function PayinTransactionList() {
                   type="button"
                   onClick={saveEdit}
                   disabled={savingEdit}
-                  className="rounded-lg bg-[#2B7DE9] px-5 py-2 font-semibold text-white disabled:opacity-60"
+                  className="rounded-lg bg-[#1E88FF] px-5 py-2 font-semibold text-white disabled:opacity-60"
                 >
                   {savingEdit ? "Saving..." : "Save"}
                 </button>
@@ -996,7 +997,7 @@ function PayinTransactionList() {
                     type="date"
                     value={exportStartDate}
                     onChange={(e) => setExportStartDate(e.target.value)}
-                    className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                    className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                   />
                 </div>
 
@@ -1009,7 +1010,7 @@ function PayinTransactionList() {
                     type="date"
                     value={exportEndDate}
                     onChange={(e) => setExportEndDate(e.target.value)}
-                    className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm outline-none"
+                    className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
                   />
                 </div>
               </div>

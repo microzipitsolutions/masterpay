@@ -60,7 +60,7 @@ export default function ClientsList() {
         </div>
         <Link
           to="/superadmin/clients/create"
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700"
+          className="flex items-center gap-2 brand-gradient text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:brightness-[1.06]"
         >
           <Plus size={16} /> New Client
         </Link>
@@ -72,7 +72,7 @@ export default function ClientsList() {
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
           <table className="w-full min-w-[700px] text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
+            <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
               <tr>
                 <th className="px-5 py-3 text-left font-semibold text-slate-600">Company</th>
                 <th className="px-5 py-3 text-left font-semibold text-slate-600">Domain</th>

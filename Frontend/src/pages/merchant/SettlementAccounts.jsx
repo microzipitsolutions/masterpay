@@ -268,10 +268,10 @@ function SettlementAccountsList() {
 
   return (
     <MerchantLayout>
-      <div className="min-h-[calc(100vh-80px)] bg-[#f5f7fb] px-3 sm:px-8 py-4 sm:py-10">
+      <div className="min-h-[calc(100vh-80px)] bg-white px-3 sm:px-8 py-4 sm:py-10">
         <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">
               Settlement Accounts List
             </h1>
 
@@ -294,7 +294,7 @@ function SettlementAccountsList() {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="h-12 w-full sm:w-60 rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-600 outline-none focus:border-[#2B7DE9]"
+                className="h-12 w-full sm:w-60 rounded-lg border border-slate-200 bg-white px-4 text-sm text-gray-600 outline-none focus:border-[#1E88FF]"
               >
                 <option value="">All</option>
                 <option value="true">Active</option>
@@ -311,7 +311,7 @@ function SettlementAccountsList() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-12 w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-600 outline-none focus:border-[#2B7DE9]"
+                className="h-12 w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-4 text-sm text-gray-600 outline-none focus:border-[#1E88FF]"
               />
             </div>
 
@@ -324,7 +324,7 @@ function SettlementAccountsList() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-12 w-full sm:w-56 rounded-lg border border-gray-300 bg-white px-4 text-sm text-gray-600 outline-none focus:border-[#2B7DE9]"
+                className="h-12 w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-4 text-sm text-gray-600 outline-none focus:border-[#1E88FF]"
               />
             </div>
           </div>
@@ -342,10 +342,10 @@ function SettlementAccountsList() {
           </div>
         )}
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card bg-white">
           <table className="w-full border-collapse min-w-[900px]">
             <thead>
-              <tr className="border-b border-gray-200 bg-white text-left">
+              <tr className="border-b border-slate-200 bg-white text-left">
                 <th className="px-6 py-5 text-sm font-bold text-gray-900">
                   ID
                 </th>
@@ -459,7 +459,7 @@ function SettlementAccountsList() {
                         <button
                           type="button"
                           onClick={() => openEditModal(account)}
-                          className="rounded-lg bg-[#eef3fb] px-4 py-2 text-sm font-medium text-[#0b2a5b]"
+                          className="rounded-lg bg-[#e8f3ff] px-4 py-2 text-sm font-medium text-[#0b2a5b]"
                         >
                           Edit
                         </button>
@@ -484,7 +484,7 @@ function SettlementAccountsList() {
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
             <div className="w-full sm:max-w-[620px] rounded-t-2xl sm:rounded-2xl bg-white p-7 shadow-xl max-h-[90vh] overflow-y-auto">
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-xl font-extrabold tracking-tight text-navy-900">
                   Edit Settlement Account
                 </h2>
 
@@ -509,7 +509,7 @@ function SettlementAccountsList() {
                       name="ifsc_code"
                       value={editForm.ifsc_code}
                       onChange={handleEditChange}
-                      className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                      className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                     />
                   </div>
 
@@ -523,7 +523,7 @@ function SettlementAccountsList() {
                       name="account_number"
                       value={editForm.account_number}
                       onChange={handleEditChange}
-                      className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                      className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                     />
                   </div>
 
@@ -538,7 +538,7 @@ function SettlementAccountsList() {
                       name="account_holder_name"
                       value={editForm.account_holder_name}
                       onChange={handleEditChange}
-                      className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                      className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                     />
                   </div>
 
@@ -552,7 +552,7 @@ function SettlementAccountsList() {
                       name="upi_id"
                       value={editForm.upi_id}
                       onChange={handleEditChange}
-                      className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                      className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                     />
                   </div>
 
@@ -566,7 +566,7 @@ function SettlementAccountsList() {
                       name="max_payment_limit"
                       value={editForm.max_payment_limit}
                       onChange={handleEditChange}
-                      className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                      className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                     />
                   </div>
 
@@ -581,7 +581,7 @@ function SettlementAccountsList() {
                       name="min_transaction_amount"
                       value={editForm.min_transaction_amount}
                       onChange={handleEditChange}
-                      className="h-12 w-full rounded-lg border border-gray-300 px-4 text-sm outline-none focus:border-[#2B7DE9]"
+                      className="h-12 w-full rounded-lg border border-slate-200 px-4 text-sm outline-none focus:border-[#1E88FF]"
                     />
                   </div>
 
@@ -590,7 +590,7 @@ function SettlementAccountsList() {
                       type="button"
                       onClick={handleEditToggle}
                       className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
-                        editForm.is_active ? "bg-[#2B7DE9]" : "bg-gray-300"
+                        editForm.is_active ? "bg-[#1E88FF]" : "bg-gray-300"
                       }`}
                     >
                       <span
@@ -610,7 +610,7 @@ function SettlementAccountsList() {
                   <button
                     type="button"
                     onClick={closeEditModal}
-                    className="rounded-lg border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-700"
+                    className="rounded-lg border border-slate-200 px-5 py-3 text-sm font-semibold text-gray-700"
                   >
                     Cancel
                   </button>
@@ -618,7 +618,7 @@ function SettlementAccountsList() {
                   <button
                     type="submit"
                     disabled={editLoading}
-                    className="rounded-lg bg-[#2B7DE9] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    className="rounded-lg bg-[#1E88FF] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
                   >
                     {editLoading ? "Updating..." : "Update Account"}
                   </button>

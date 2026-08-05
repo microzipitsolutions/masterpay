@@ -58,7 +58,7 @@ function Tickets() {
   return (
     <div className="px-2 py-2 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Merchant Tickets</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Merchant Tickets</h1>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -81,7 +81,7 @@ function Tickets() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+      <div className="bg-white rounded-card border border-slate-200 shadow-card overflow-x-auto">
         <table className="min-w-full min-w-[760px] text-sm text-left">
           <thead className="border-b bg-slate-50">
             <tr>
@@ -134,13 +134,13 @@ function Tickets() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setExpandedId(expandedId === ticket.id ? null : ticket.id)}
-                        className="text-xs text-[#2B7DE9] underline"
+                        className="text-xs text-[#1E88FF] underline"
                       >
                         {expandedId === ticket.id ? "Hide" : "View"}
                       </button>
                       <button
                         onClick={() => openReply(ticket)}
-                        className="rounded-lg bg-[#2B7DE9] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0b2a5b]"
+                        className="rounded-lg bg-[#1E88FF] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#0b2a5b]"
                       >
                         Reply
                       </button>
@@ -241,7 +241,7 @@ function Tickets() {
               <button type="button" onClick={() => setReplyTicket(null)} className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700">
                 Cancel
               </button>
-              <button type="submit" disabled={replying} className="rounded-lg bg-[#2B7DE9] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
+              <button type="submit" disabled={replying} className="rounded-lg bg-[#1E88FF] text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-50">
                 {replying ? "Saving..." : "Save Reply"}
               </button>
             </div>

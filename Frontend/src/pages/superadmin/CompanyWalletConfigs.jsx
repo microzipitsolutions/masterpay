@@ -29,7 +29,7 @@ function SuperAdminCompanyWalletConfigsInner() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Company Wallet Configs</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Company Wallet Configs</h1>
       <p className="text-sm text-gray-500">
         Per-tenant USDT wallet and bank details Agents see when topping up. Each client company
         manages its own — edit here as platform owner if a tenant hasn't configured theirs yet.
@@ -41,7 +41,7 @@ function SuperAdminCompanyWalletConfigsInner() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-card border border-slate-200 shadow-card bg-white">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-slate-100 bg-slate-50 text-slate-700">
             <tr>
@@ -77,7 +77,7 @@ function SuperAdminCompanyWalletConfigsInner() {
                   <td className="px-5 py-4">
                     <button
                       onClick={() => setEditingClient(row)}
-                      className="inline-flex items-center gap-1 rounded bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5"
+                      className="inline-flex items-center gap-1 rounded brand-gradient text-white text-xs font-semibold px-3 py-1.5"
                     >
                       <Pencil size={12} /> Edit
                     </button>

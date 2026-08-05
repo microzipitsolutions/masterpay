@@ -6,8 +6,9 @@ import {
 } from "lucide-react";
 import { clearSession, getCurrentSession } from "../api";
 import Logo from "../components/Logo";
-import { useBranding } from "../context/BrandingContext";
 import AdminAlertsBell from "../components/AdminAlertsBell";
+import { SidebarShell, SidebarLabel } from "../components/ui/SidebarShell";
+import { TopbarShell, LogoutButton } from "../components/ui/TopbarShell";
 
 // Grouped sidebar sections — existing routes are unchanged, just reorganized
 // under clearer headings (Overview / Users & Clients / Money Movement /
@@ -56,7 +57,7 @@ function SectionHeader({ label, open, onToggle }) {
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-400 hover:text-slate-600"
+      className="flex w-full items-center justify-between px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-white/35 hover:text-white/60"
     >
       {label}
       {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -69,7 +70,6 @@ export default function SuperAdminLayout({ children }) {
   const location = useLocation();
   const session = getCurrentSession();
   const [open, setOpen] = useState(() => window.innerWidth >= 768);
-  const { theme_color } = useBranding();
   const [openSections, setOpenSections] = useState(() =>
     Object.fromEntries(NAV_GROUPS.map((g) => [g.section, true])),
   );
@@ -84,97 +84,96 @@ export default function SuperAdminLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex overflow-hidden">
+    <div className="min-h-screen bg-white flex overflow-hidden">
       {/* Mobile backdrop */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-navy-900/50 z-30 md:hidden"
           onClick={() => setOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside
+      <div
         className={[
           "fixed inset-y-0 left-0 z-40 w-[280px]",
           "md:static md:z-auto md:w-auto md:inset-auto",
-          "bg-white border-r border-slate-200 flex flex-col",
           "transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:hidden",
         ].join(" ")}
       >
-        <div className="px-6 py-5 border-b border-slate-200">
-          <Logo />
-          <div className="text-xs text-slate-500 mt-2 truncate">Super Admin · {session.username}</div>
-        </div>
+        <SidebarShell>
+          <div className="mb-4 pb-5 border-b border-white/10">
+            <Logo variant="dark" />
+          </div>
+          <div className="mb-6 text-xs text-white/40 truncate">Super Admin · {session.username}</div>
 
-        <nav className="flex-1 p-3 space-y-3 overflow-y-auto">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.section}>
-              <SectionHeader
-                label={group.section}
-                open={openSections[group.section]}
-                onToggle={() => setOpenSections((s) => ({ ...s, [group.section]: !s[group.section] }))}
-              />
-              {openSections[group.section] && (
-                <div className="space-y-1">
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        end
-                        className={({ isActive }) =>
-                          `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                            isActive
-                              ? "text-white"
-                              : "text-slate-700 hover:bg-slate-100"
-                          }`
-                        }
-                        style={({ isActive }) => isActive ? { backgroundColor: theme_color } : {}}
-                        onClick={() => window.innerWidth < 768 && setOpen(false)}
-                      >
-                        <Icon size={18} />
-                        {item.label}
-                      </NavLink>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </nav>
+          <nav className="flex-1 space-y-3 overflow-y-auto">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.section}>
+                <SectionHeader
+                  label={group.section}
+                  open={openSections[group.section]}
+                  onToggle={() => setOpenSections((s) => ({ ...s, [group.section]: !s[group.section] }))}
+                />
+                {openSections[group.section] && (
+                  <div className="space-y-1 mt-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.to}
+                          to={item.to}
+                          end
+                          className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-2.5 rounded-control text-sm font-semibold transition ${
+                              isActive
+                                ? "brand-gradient text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)]"
+                                : "text-white/70 hover:bg-white/10 hover:text-white"
+                            }`
+                          }
+                          onClick={() => window.innerWidth < 768 && setOpen(false)}
+                        >
+                          <Icon size={18} />
+                          {item.label}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
 
-        <button
-          onClick={handleLogout}
-          className="m-3 flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-red-700 hover:bg-red-50"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
-      </aside>
+          <button
+            onClick={handleLogout}
+            className="mt-3 flex items-center gap-3 rounded-control px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
+        </SidebarShell>
+      </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-          <button onClick={() => setOpen(!open)} className="p-2 rounded-lg hover:bg-slate-100">
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <div className="flex items-center gap-3">
-            <AdminAlertsBell />
-            <div className="hidden sm:block text-right">
-              <div className="text-sm font-semibold text-slate-900">{session.username}</div>
-              <div className="text-xs text-slate-500">Super Admin</div>
-            </div>
-            <div
-              className="w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-sm"
-              style={{ backgroundColor: theme_color }}
-            >
-              {(session.username || "S").charAt(0).toUpperCase()}
-            </div>
-          </div>
-        </header>
-        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
+        <TopbarShell
+          sidebarOpen={open}
+          setSidebarOpen={setOpen}
+          right={
+            <>
+              <AdminAlertsBell />
+              <div className="hidden sm:block text-right leading-tight">
+                <div className="text-sm font-semibold text-navy-900">{session.username}</div>
+                <div className="text-xs text-slate-500">Super Admin</div>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full brand-gradient text-sm font-bold text-white">
+                {(session.username || "S").charAt(0).toUpperCase()}
+              </div>
+              <LogoutButton onClick={handleLogout} />
+            </>
+          }
+        />
+        <main className="flex-1 p-4 md:p-6 overflow-auto bg-white">{children}</main>
       </div>
     </div>
   );

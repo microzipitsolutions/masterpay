@@ -47,7 +47,7 @@ function MaintenanceModeInner() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Maintenance Mode</h1>
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">Maintenance Mode</h1>
       <p className="text-sm text-gray-500">
         When enabled, new logins are blocked for every role except Super Admin, and new Pay-In sessions
         (both <code>POST /api/payins</code> and the hosted checkout flow) are rejected with a 503. Existing
