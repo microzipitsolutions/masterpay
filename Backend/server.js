@@ -12,6 +12,16 @@ require("dotenv").config();
 
 const { ssEnabled, ensureParty, postEntry, ssRequest } = require("./ssAccounting");
 const { sendMailWithRetry } = require("./mailer");
+const webhookSecurity = require("./lib/webhookSecurity");
+
+// Master kill-switch for the merchant-integration-config subsystem (TrustPay-
+// style external platforms onboarded as MasterPay merchants). When explicitly
+// set to "false", the new admin endpoints are disabled and the auth-middleware
+// JOINs below are skipped entirely, falling through to pre-existing behaviour.
+const MERCHANT_INTEGRATION_CONFIG_ENABLED = process.env.MERCHANT_INTEGRATION_CONFIG_ENABLED !== "false";
+const WEBHOOK_TIMEOUT_MS = Number(process.env.WEBHOOK_TIMEOUT_MS) || 10000;
+const WEBHOOK_RETRY_SWEEP_INTERVAL_MS = Number(process.env.WEBHOOK_RETRY_SWEEP_INTERVAL_MS) || 60 * 1000;
+const WEBHOOK_MAX_RETRY_ATTEMPTS = Number(process.env.WEBHOOK_MAX_RETRY_ATTEMPTS) || 6;
 
 const app = express();
 
@@ -725,19 +735,24 @@ function handleKnownValidationError(res, error) {
 }
 
 // Helper: fire webhook asynchronously (fire-and-forget, never blocks response)
-async function fireWebhook(pool, txn, eventName = "payin.approved") {
-  if (!txn || !txn.webhook_url || !txn.webhook_url.trim()) return;
+// Event name <-> status mapping — the 4 Pay-In webhook events are fixed and
+// preserved exactly (payin.approved/expired/failed/disputed). Used both when
+// firing immediately (fireWebhook) and by the retry sweep, which rebuilds the
+// payload from the transaction's current row rather than caching a stale copy.
+const PAYIN_STATUS_BY_EVENT = {
+  "payin.approved": "Approved",
+  "payin.expired": "Expired",
+  "payin.failed": "Failed",
+  "payin.disputed": "Disputed",
+};
+const PAYIN_EVENT_BY_STATUS = Object.fromEntries(
+  Object.entries(PAYIN_STATUS_BY_EVENT).map(([event, status]) => [status, event]),
+);
 
-  const webhookUrl = txn.webhook_url.trim();
-  const statusByEvent = {
-    "payin.approved": "Approved",
-    "payin.expired": "Expired",
-    "payin.failed": "Failed",
-    "payin.disputed": "Disputed",
-  };
-  const eventStatus = statusByEvent[eventName] || "Approved";
+function buildPayinWebhookPayload(txn, eventName) {
+  const eventStatus = PAYIN_STATUS_BY_EVENT[eventName] || "Approved";
   const eventTime = txn.approved_or_reject_date || new Date().toISOString();
-  const payload = {
+  return {
     event: eventName,
     transaction_id: txn.id,
     transaction_ref: txn.transaction_id || null,
@@ -757,41 +772,123 @@ async function fireWebhook(pool, txn, eventName = "payin.approved") {
     ifsc_code: txn.ifsc_code || null,
     upi_id: txn.upi_id || null,
   };
+}
 
-  console.log(`[WEBHOOK] Firing for txn ${txn.id} → ${webhookUrl}`);
-  console.log("[WEBHOOK] Payload:", payload);
+function buildPayoutWebhookPayload(txn) {
+  // Deliberately NOT the Pay-In formatter — different, much smaller shape.
+  return {
+    transactionId: txn.transaction_id,
+    status: txn.status,
+    amount: Number(txn.amount),
+    utr_number: txn.utr_number || null,
+  };
+}
 
+// Looks up the merchant's webhook signing secret (merchant_integration_configs).
+// Returns null for every merchant that hasn't opted in (the default for all
+// pre-existing merchants) — callers then send the exact same unsigned request
+// they always have.
+async function lookupWebhookSigningSecret(merchantId) {
+  if (!MERCHANT_INTEGRATION_CONFIG_ENABLED || !merchantId) return null;
+  try {
+    const r = await pool.query(
+      `SELECT webhook_signing_secret FROM merchant_integration_configs
+       WHERE merchant_id = $1 AND is_enabled IS NOT FALSE LIMIT 1`,
+      [merchantId],
+    );
+    return r.rows[0]?.webhook_signing_secret || null;
+  } catch (e) {
+    console.log(`[WEBHOOK] Signing secret lookup failed for merchant ${merchantId}:`, e.message);
+    return null;
+  }
+}
+
+// Generic delivery attempt + retry bookkeeping, shared by Pay-In and Pay-Out
+// (the HTTP/signing/backoff mechanics are identical; the payload SHAPE is not
+// — callers always supply an already-built, format-specific payload).
+// `table` is never derived from request input — only "transactions" or
+// "withdrawal_transactions" literals passed by the wrapper functions below.
+async function attemptWebhookDelivery({ table, txn, payload, eventName, webhookUrl, isRetry }) {
+  if (table !== "transactions" && table !== "withdrawal_transactions") {
+    throw new Error(`attemptWebhookDelivery: invalid table "${table}"`);
+  }
+
+  const deliveryId =
+    isRetry && txn.webhook_delivery_id
+      ? txn.webhook_delivery_id
+      : webhookSecurity.generateDeliveryId();
+  const attemptNumber = isRetry ? (Number(txn.webhook_attempts) || 0) + 1 : 1;
+
+  const signingSecret = await lookupWebhookSigningSecret(txn.merchant_id);
+  const rawBody = JSON.stringify(payload);
+  const headers = { "Content-Type": "application/json" };
+  if (signingSecret) {
+    headers["X-MasterPay-Signature"] = webhookSecurity.signPayload(signingSecret, rawBody);
+    headers["X-MasterPay-Event"] = eventName;
+    headers["X-MasterPay-Delivery-Id"] = deliveryId;
+  }
+
+  // Redacted on purpose — never log full payload (transaction_ref is a
+  // checkout bearer secret; bank details are PII). Internal numeric id +
+  // event + attempt is enough to trace a delivery in the logs.
+  console.log(
+    `[WEBHOOK] Firing ${table} id=${txn.id} event=${eventName} attempt=${attemptNumber} signed=${!!signingSecret}`,
+  );
+
+  let ok = false;
+  let logMsg;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
+    const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
     const webhookRes = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      headers,
+      body: rawBody,
       signal: controller.signal,
     });
-
     clearTimeout(timeout);
     const responseBody = await webhookRes.text();
-    const logMsg = `status=${webhookRes.status} body=${responseBody.substring(0, 500)}`;
-
-    console.log(`[WEBHOOK] Response for txn ${txn.id}: ${logMsg}`);
-
-    await pool.query(
-      `UPDATE transactions SET webhook_sent = true, webhook_response = $1 WHERE id = $2`,
-      [logMsg, txn.id],
-    );
+    ok = webhookRes.status >= 200 && webhookRes.status < 300;
+    logMsg = `status=${webhookRes.status} body=${responseBody.substring(0, 500)}`;
   } catch (err) {
-    const errMsg = `error: ${err.message}`;
-    console.log(`[WEBHOOK] Failed for txn ${txn.id}: ${errMsg}`);
-    await pool
-      .query(
-        `UPDATE transactions SET webhook_sent = false, webhook_response = $1 WHERE id = $2`,
-        [errMsg, txn.id],
-      )
-      .catch(() => {});
+    ok = false;
+    logMsg = `error: ${err.message}`;
   }
+
+  console.log(`[WEBHOOK] Result ${table} id=${txn.id} event=${eventName}: ok=${ok} attempt=${attemptNumber}`);
+
+  const nextRetryAt =
+    ok || attemptNumber >= WEBHOOK_MAX_RETRY_ATTEMPTS
+      ? null
+      : new Date(Date.now() + webhookSecurity.computeBackoffSeconds(attemptNumber) * 1000);
+
+  await pool
+    .query(
+      `UPDATE ${table}
+       SET webhook_sent = $1,
+           webhook_response = $2,
+           webhook_attempts = $3,
+           webhook_delivery_id = $4,
+           webhook_last_attempt_at = NOW(),
+           webhook_delivered_at = CASE WHEN $1 THEN NOW() ELSE webhook_delivered_at END,
+           webhook_next_retry_at = $5,
+           webhook_last_error = $6
+       WHERE id = $7`,
+      [ok, logMsg, attemptNumber, deliveryId, nextRetryAt, ok ? null : logMsg, txn.id],
+    )
+    .catch((e) => console.log(`[WEBHOOK] Failed to record delivery state for ${table} id=${txn.id}:`, e.message));
+}
+
+// Helper: fire webhook asynchronously (fire-and-forget, never blocks response).
+// Always represents attempt 1 of a fresh delivery for `eventName` — a new
+// status transition supersedes retry-tracking of whatever event fired before
+// it on the same transaction (see migration 004 comments for the rationale).
+// The background sweep (sweepPayinWebhookRetries) handles subsequent attempts.
+async function fireWebhook(pool, txn, eventName = "payin.approved") {
+  if (!txn || !txn.webhook_url || !txn.webhook_url.trim()) return;
+  const webhookUrl = txn.webhook_url.trim();
+  const payload = buildPayinWebhookPayload(txn, eventName);
+  await attemptWebhookDelivery({ table: "transactions", txn, payload, eventName, webhookUrl, isRetry: false });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2490,6 +2587,55 @@ async function initializeDatabase() {
     `);
     // ── END TEST MODE TABLES ─────────────────────────────────────────────────
 
+    // ── MERCHANT INTEGRATION CONFIG (external platforms as MasterPay merchants,
+    // e.g. TrustPay) + WEBHOOK DELIVERY RETRY ──────────────────────────────────
+    // Purely additive: absence of a merchant_integration_configs row (the case
+    // for every merchant that predates this feature) leaves Pay-In/Pay-Out
+    // auth, webhook payloads and headers completely unchanged — see
+    // authenticateMerchantApiKey / fireWebhook / fireWithdrawalWebhook.
+    // Mirrored standalone at migrations/004_merchant_integration_and_webhook_retry.sql
+    // for ops review, same convention as 002/003.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS merchant_integration_configs (
+        id SERIAL PRIMARY KEY,
+        merchant_id INTEGER UNIQUE NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+        webhook_signing_secret TEXT,
+        is_enabled BOOLEAN NOT NULL DEFAULT true,
+        allowed_webhook_domains TEXT[],
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        webhook_secret_created_at TIMESTAMPTZ,
+        webhook_secret_regenerated_at TIMESTAMPTZ,
+        payin_key_regenerated_at TIMESTAMPTZ,
+        payout_key_regenerated_at TIMESTAMPTZ,
+        last_modified_by_role VARCHAR(20),
+        last_modified_by_id INTEGER
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_merchant_integration_configs_merchant ON merchant_integration_configs(merchant_id);`);
+
+    // Webhook delivery retry bookkeeping — additive on the existing Pay-In/Pay-Out
+    // transaction tables. webhook_sent/webhook_response (both tables, pre-existing)
+    // keep being written exactly as before; these new columns let a background
+    // sweep retry failed deliveries without touching that existing behaviour.
+    for (const stmt of [
+      `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS webhook_attempts INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS webhook_next_retry_at TIMESTAMPTZ`,
+      `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS webhook_last_attempt_at TIMESTAMPTZ`,
+      `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS webhook_delivered_at TIMESTAMPTZ`,
+      `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS webhook_delivery_id TEXT`,
+      `ALTER TABLE transactions ADD COLUMN IF NOT EXISTS webhook_last_error TEXT`,
+      `ALTER TABLE withdrawal_transactions ADD COLUMN IF NOT EXISTS webhook_attempts INTEGER NOT NULL DEFAULT 0`,
+      `ALTER TABLE withdrawal_transactions ADD COLUMN IF NOT EXISTS webhook_next_retry_at TIMESTAMPTZ`,
+      `ALTER TABLE withdrawal_transactions ADD COLUMN IF NOT EXISTS webhook_last_attempt_at TIMESTAMPTZ`,
+      `ALTER TABLE withdrawal_transactions ADD COLUMN IF NOT EXISTS webhook_delivered_at TIMESTAMPTZ`,
+      `ALTER TABLE withdrawal_transactions ADD COLUMN IF NOT EXISTS webhook_delivery_id TEXT`,
+      `ALTER TABLE withdrawal_transactions ADD COLUMN IF NOT EXISTS webhook_last_error TEXT`,
+    ]) { await pool.query(stmt); }
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_transactions_webhook_retry ON transactions(webhook_next_retry_at) WHERE webhook_delivered_at IS NULL;`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_withdrawal_transactions_webhook_retry ON withdrawal_transactions(webhook_next_retry_at) WHERE webhook_delivered_at IS NULL;`);
+    // ── END MERCHANT INTEGRATION CONFIG + WEBHOOK RETRY ────────────────────────
+
     console.log("Tables created successfully");
   } catch (error) {
     console.error("Database initialization failed:", error);
@@ -2509,17 +2655,32 @@ async function authenticateMerchantApiKey(req, res, next) {
     }
 
     const result = await pool.query(
-      `SELECT
-          m.id AS merchant_id,
-          m.api_key,
-          m.created_by_admin_id,
-          m.is_active,
-          m.client_id,
-          m.agent_id
-       FROM merchants m
-       WHERE TRIM(m.api_key) = TRIM($1)
-         AND m.is_active = true
-       LIMIT 1`,
+      MERCHANT_INTEGRATION_CONFIG_ENABLED
+        ? `SELECT
+              m.id AS merchant_id,
+              m.api_key,
+              m.created_by_admin_id,
+              m.is_active,
+              m.client_id,
+              m.agent_id,
+              mic.is_enabled AS integration_enabled,
+              mic.allowed_webhook_domains
+           FROM merchants m
+           LEFT JOIN merchant_integration_configs mic ON mic.merchant_id = m.id
+           WHERE TRIM(m.api_key) = TRIM($1)
+             AND m.is_active = true
+           LIMIT 1`
+        : `SELECT
+              m.id AS merchant_id,
+              m.api_key,
+              m.created_by_admin_id,
+              m.is_active,
+              m.client_id,
+              m.agent_id
+           FROM merchants m
+           WHERE TRIM(m.api_key) = TRIM($1)
+             AND m.is_active = true
+           LIMIT 1`,
       [apiKey],
     );
 
@@ -2530,7 +2691,20 @@ async function authenticateMerchantApiKey(req, res, next) {
       });
     }
 
-    req.merchantApiUser = result.rows[0];
+    const merchant = result.rows[0];
+
+    // merchant_integration_configs opt-in gate: absence of a row (every
+    // pre-existing merchant) or is_enabled=true leaves this a no-op. Only an
+    // explicit is_enabled=false (set via the Merchant API Integration admin
+    // page) blocks Pay-In here.
+    if (merchant.integration_enabled === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Merchant integration is disabled",
+      });
+    }
+
+    req.merchantApiUser = merchant;
     next();
   } catch (error) {
     console.log("Merchant API auth error:", error.message);
@@ -5060,6 +5234,384 @@ app.delete("/api/merchants/:id", async (req, res) => {
   await runCascadeDelete(res, "Merchant", (client) =>
     cascadeDeleteMerchant(client, req.params.id),
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ─── MERCHANT API INTEGRATION (admin-only) ─────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Dedicated Admin/Super Admin surface for onboarding external platforms
+// (e.g. TrustPay) as ordinary MasterPay merchants that call the existing
+// Pay-In/Pay-Out APIs. Entirely additive — a brand-new route group and a
+// brand-new table (merchant_integration_configs). Does not touch
+// /api/merchants, /api/withdrawal/configs, or the merchant/agent dashboards.
+// Credentials are masked by default everywhere here; the only way to see a
+// full value is the explicit /reveal action, and the only way to change one
+// is the explicit /regenerate action with confirm:true — never automatic.
+
+function maskSecret(value) {
+  if (!value) return null;
+  const str = String(value);
+  if (str.length <= 8) return "••••••••";
+  return `${str.slice(0, 4)}${"•".repeat(8)}${str.slice(-4)}`;
+}
+
+// Shared role + ownership guard for every route below. Admins may only manage
+// merchants they created (mirrors the ownership rule already used by
+// /api/withdrawal/configs); Super Admins may manage any merchant.
+async function loadMerchantForIntegrationAdmin(req, res, merchantId) {
+  const auth = getAuthUser(req);
+  if (!["admin", "super-admin"].includes(auth.role)) {
+    res.status(403).json({ message: "Forbidden — admin or super-admin only" });
+    return null;
+  }
+  if (!MERCHANT_INTEGRATION_CONFIG_ENABLED) {
+    res.status(404).json({ message: "Merchant integration configuration is disabled" });
+    return null;
+  }
+  const mId = Number(merchantId);
+  if (!mId) {
+    res.status(400).json({ message: "Invalid merchant id" });
+    return null;
+  }
+  const r = await pool.query(
+    `SELECT id, name, username, is_active, agent_id, created_by_admin_id
+     FROM merchants WHERE id = $1`,
+    [mId],
+  );
+  if (r.rows.length === 0) {
+    res.status(404).json({ message: "Merchant not found" });
+    return null;
+  }
+  const merchant = r.rows[0];
+  if (auth.role === "admin" && Number(merchant.created_by_admin_id) !== Number(auth.userId)) {
+    res.status(403).json({ message: "Forbidden — not your merchant" });
+    return null;
+  }
+  return { auth, merchant };
+}
+
+// GET list — masked credential status for every merchant this admin owns
+// (or all merchants, for super-admin). Mirrors the ownership scoping already
+// used by GET /api/merchants.
+app.get("/api/admin/merchant-integrations", async (req, res) => {
+  try {
+    const auth = getAuthUser(req);
+    if (!["admin", "super-admin"].includes(auth.role))
+      return res.status(403).json({ message: "Forbidden — admin or super-admin only" });
+    if (!MERCHANT_INTEGRATION_CONFIG_ENABLED)
+      return res.status(404).json({ message: "Merchant integration configuration is disabled" });
+
+    const values = [];
+    let ownerFilter = "";
+    if (auth.role === "admin") {
+      values.push(Number(auth.userId));
+      ownerFilter = ` WHERE m.created_by_admin_id = $${values.length}`;
+    }
+
+    const result = await pool.query(
+      `SELECT m.id AS merchant_id, m.name, m.username, m.is_active, m.agent_id,
+              a.name AS agent_name,
+              m.api_key AS payin_key,
+              wmc.id IS NOT NULL AS payout_configured,
+              wmc.api_key AS payout_key,
+              wmc.is_active AS payout_active,
+              mic.id IS NOT NULL AS integration_configured,
+              COALESCE(mic.is_enabled, true) AS is_enabled,
+              (mic.webhook_signing_secret IS NOT NULL) AS webhook_secret_configured,
+              mic.created_at AS integration_created_at,
+              mic.updated_at AS integration_updated_at
+       FROM merchants m
+       LEFT JOIN agents a ON a.id = m.agent_id
+       LEFT JOIN withdrawal_merchant_configs wmc ON wmc.merchant_id = m.id
+       LEFT JOIN merchant_integration_configs mic ON mic.merchant_id = m.id
+       ${ownerFilter}
+       ORDER BY m.id DESC`,
+      values,
+    );
+
+    res.json(
+      result.rows.map((row) => ({
+        merchant_id: row.merchant_id,
+        name: row.name,
+        username: row.username,
+        is_active: row.is_active,
+        agent_id: row.agent_id,
+        agent_name: row.agent_name,
+        agent_linked: !!row.agent_id,
+        payin_key_masked: maskSecret(row.payin_key),
+        payout_configured: row.payout_configured,
+        payout_key_masked: row.payout_configured ? maskSecret(row.payout_key) : null,
+        payout_active: row.payout_active,
+        integration_configured: row.integration_configured,
+        is_enabled: row.is_enabled,
+        webhook_secret_configured: row.webhook_secret_configured,
+        integration_created_at: row.integration_created_at,
+        integration_updated_at: row.integration_updated_at,
+      })),
+    );
+  } catch (error) {
+    console.log("Merchant integrations list error:", error.message);
+    res.status(500).json({ message: "Could not load merchant integrations" });
+  }
+});
+
+// GET detail — same masked shape as the list, plus the allowlist + audit
+// timestamps, for a single merchant.
+app.get("/api/admin/merchant-integrations/:merchantId", async (req, res) => {
+  try {
+    const ctx = await loadMerchantForIntegrationAdmin(req, res, req.params.merchantId);
+    if (!ctx) return;
+    const { merchant } = ctx;
+
+    const [agentRow, payoutRow, micRow] = await Promise.all([
+      merchant.agent_id
+        ? pool.query(`SELECT name FROM agents WHERE id = $1`, [merchant.agent_id])
+        : Promise.resolve({ rows: [] }),
+      pool.query(`SELECT id, api_key, is_active FROM withdrawal_merchant_configs WHERE merchant_id = $1`, [merchant.id]),
+      pool.query(`SELECT * FROM merchant_integration_configs WHERE merchant_id = $1`, [merchant.id]),
+    ]);
+    const mic = micRow.rows[0] || null;
+    const payout = payoutRow.rows[0] || null;
+
+    const merchantKeyRow = await pool.query(`SELECT api_key FROM merchants WHERE id = $1`, [merchant.id]);
+
+    res.json({
+      merchant_id: merchant.id,
+      name: merchant.name,
+      username: merchant.username,
+      is_active: merchant.is_active,
+      agent_id: merchant.agent_id,
+      agent_name: agentRow.rows[0]?.name || null,
+      agent_linked: !!merchant.agent_id,
+      payin_key_masked: maskSecret(merchantKeyRow.rows[0]?.api_key),
+      payout_configured: !!payout,
+      payout_key_masked: payout ? maskSecret(payout.api_key) : null,
+      payout_active: payout?.is_active ?? null,
+      integration_configured: !!mic,
+      is_enabled: mic ? mic.is_enabled : true,
+      allowed_webhook_domains: mic?.allowed_webhook_domains || [],
+      webhook_secret_configured: !!mic?.webhook_signing_secret,
+      webhook_secret_created_at: mic?.webhook_secret_created_at || null,
+      webhook_secret_regenerated_at: mic?.webhook_secret_regenerated_at || null,
+      payin_key_regenerated_at: mic?.payin_key_regenerated_at || null,
+      payout_key_regenerated_at: mic?.payout_key_regenerated_at || null,
+      integration_created_at: mic?.created_at || null,
+      integration_updated_at: mic?.updated_at || null,
+      last_modified_by_role: mic?.last_modified_by_role || null,
+    });
+  } catch (error) {
+    console.log("Merchant integration detail error:", error.message);
+    res.status(500).json({ message: "Could not load merchant integration" });
+  }
+});
+
+// PUT — upsert is_enabled / allowed_webhook_domains. First call for a
+// merchant is "integration creation" (created_at defaults to NOW() on the
+// INSERT branch). Never touches any credential.
+app.put("/api/admin/merchant-integrations/:merchantId", async (req, res) => {
+  try {
+    const ctx = await loadMerchantForIntegrationAdmin(req, res, req.params.merchantId);
+    if (!ctx) return;
+    const { auth, merchant } = ctx;
+
+    const { is_enabled, allowed_webhook_domains } = req.body || {};
+    const domains =
+      Array.isArray(allowed_webhook_domains)
+        ? allowed_webhook_domains.map((d) => String(d || "").trim()).filter(Boolean)
+        : null;
+
+    const result = await pool.query(
+      `INSERT INTO merchant_integration_configs
+         (merchant_id, is_enabled, allowed_webhook_domains, last_modified_by_role, last_modified_by_id)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (merchant_id) DO UPDATE SET
+         is_enabled = EXCLUDED.is_enabled,
+         allowed_webhook_domains = EXCLUDED.allowed_webhook_domains,
+         last_modified_by_role = EXCLUDED.last_modified_by_role,
+         last_modified_by_id = EXCLUDED.last_modified_by_id,
+         updated_at = NOW()
+       RETURNING is_enabled, allowed_webhook_domains, created_at, updated_at`,
+      [merchant.id, is_enabled !== false, domains, auth.role, Number(auth.userId) || null],
+    );
+
+    res.json({ merchant_id: merchant.id, ...result.rows[0] });
+  } catch (error) {
+    console.log("Merchant integration config save error:", error.message);
+    res.status(500).json({ message: "Could not save merchant integration config" });
+  }
+});
+
+const REVEALABLE_CREDENTIALS = new Set(["payin_key", "payout_key", "webhook_secret"]);
+
+// POST /reveal — the only place a full credential value is ever returned.
+// Requires the same role+ownership guard as every other route here; never
+// logs the value itself, only which credential type was revealed.
+app.post("/api/admin/merchant-integrations/:merchantId/reveal", async (req, res) => {
+  try {
+    const ctx = await loadMerchantForIntegrationAdmin(req, res, req.params.merchantId);
+    if (!ctx) return;
+    const { merchant } = ctx;
+
+    const credential = String(req.body?.credential || "");
+    if (!REVEALABLE_CREDENTIALS.has(credential)) {
+      return res.status(400).json({ message: "credential must be one of payin_key, payout_key, webhook_secret" });
+    }
+
+    console.log(`[MERCHANT INTEGRATION] Reveal ${credential} for merchant ${merchant.id} by ${req.headers.role || "?"}:${req.headers.userid || "?"}`);
+
+    if (credential === "payin_key") {
+      const r = await pool.query(`SELECT api_key FROM merchants WHERE id = $1`, [merchant.id]);
+      return res.json({ credential, value: r.rows[0]?.api_key || null });
+    }
+    if (credential === "payout_key") {
+      const r = await pool.query(`SELECT api_key FROM withdrawal_merchant_configs WHERE merchant_id = $1`, [merchant.id]);
+      if (r.rows.length === 0) return res.status(404).json({ message: "Payout is not configured for this merchant" });
+      return res.json({ credential, value: r.rows[0].api_key });
+    }
+    // webhook_secret
+    const r = await pool.query(`SELECT webhook_signing_secret FROM merchant_integration_configs WHERE merchant_id = $1`, [merchant.id]);
+    if (!r.rows[0]?.webhook_signing_secret) {
+      return res.status(404).json({ message: "Webhook signing secret has not been generated yet" });
+    }
+    return res.json({ credential, value: r.rows[0].webhook_signing_secret });
+  } catch (error) {
+    console.log("Merchant integration reveal error:", error.message);
+    res.status(500).json({ message: "Could not reveal credential" });
+  }
+});
+
+// POST /regenerate — the ONLY place any of these three credentials is ever
+// generated or changed. Requires an explicit confirm:true; never runs
+// automatically (not at migration time, not at boot, not on a schedule).
+app.post("/api/admin/merchant-integrations/:merchantId/regenerate", async (req, res) => {
+  try {
+    const ctx = await loadMerchantForIntegrationAdmin(req, res, req.params.merchantId);
+    if (!ctx) return;
+    const { auth, merchant } = ctx;
+
+    const credential = String(req.body?.credential || "");
+    if (!REVEALABLE_CREDENTIALS.has(credential)) {
+      return res.status(400).json({ message: "credential must be one of payin_key, payout_key, webhook_secret" });
+    }
+    if (req.body?.confirm !== true) {
+      return res.status(400).json({ message: "confirm:true is required to regenerate a credential" });
+    }
+
+    console.log(`[MERCHANT INTEGRATION] Regenerate ${credential} for merchant ${merchant.id} by ${req.headers.role || "?"}:${req.headers.userid || "?"}`);
+
+    if (credential === "payin_key") {
+      // Same generation pattern as POST /api/merchants — one source of truth
+      // for merchants.api_key, no duplicate copy kept anywhere.
+      const newKey = crypto.randomBytes(32).toString("hex");
+      await pool.query(`UPDATE merchants SET api_key = $1 WHERE id = $2`, [newKey, merchant.id]);
+      await pool.query(
+        `INSERT INTO merchant_integration_configs (merchant_id, payin_key_regenerated_at, last_modified_by_role, last_modified_by_id)
+         VALUES ($1, NOW(), $2, $3)
+         ON CONFLICT (merchant_id) DO UPDATE SET
+           payin_key_regenerated_at = NOW(), last_modified_by_role = EXCLUDED.last_modified_by_role,
+           last_modified_by_id = EXCLUDED.last_modified_by_id, updated_at = NOW()`,
+        [merchant.id, auth.role, Number(auth.userId) || null],
+      );
+      return res.json({ credential, value: newKey });
+    }
+
+    if (credential === "payout_key") {
+      const existing = await pool.query(`SELECT id FROM withdrawal_merchant_configs WHERE merchant_id = $1`, [merchant.id]);
+      if (existing.rows.length === 0) {
+        return res.status(400).json({ message: "Configure Pay-Out for this merchant before regenerating its key" });
+      }
+      // Same generation pattern as PUT /api/withdrawal/configs/:merchant_id
+      // (regenerate_api_key) — one source of truth for withdrawal_merchant_configs.api_key.
+      const newKey = crypto.randomBytes(32).toString("hex");
+      await pool.query(`UPDATE withdrawal_merchant_configs SET api_key = $1, updated_at = NOW() WHERE merchant_id = $2`, [newKey, merchant.id]);
+      await pool.query(
+        `INSERT INTO merchant_integration_configs (merchant_id, payout_key_regenerated_at, last_modified_by_role, last_modified_by_id)
+         VALUES ($1, NOW(), $2, $3)
+         ON CONFLICT (merchant_id) DO UPDATE SET
+           payout_key_regenerated_at = NOW(), last_modified_by_role = EXCLUDED.last_modified_by_role,
+           last_modified_by_id = EXCLUDED.last_modified_by_id, updated_at = NOW()`,
+        [merchant.id, auth.role, Number(auth.userId) || null],
+      );
+      return res.json({ credential, value: newKey });
+    }
+
+    // webhook_secret — independent 256-bit secret, never reused from either
+    // API key, generated only here.
+    const newSecret = webhookSecurity.generateWebhookSecret();
+    const upsert = await pool.query(
+      `INSERT INTO merchant_integration_configs
+         (merchant_id, webhook_signing_secret, webhook_secret_created_at, webhook_secret_regenerated_at, last_modified_by_role, last_modified_by_id)
+       VALUES ($1, $2, NOW(), NOW(), $3, $4)
+       ON CONFLICT (merchant_id) DO UPDATE SET
+         webhook_signing_secret = EXCLUDED.webhook_signing_secret,
+         webhook_secret_created_at = COALESCE(merchant_integration_configs.webhook_secret_created_at, NOW()),
+         webhook_secret_regenerated_at = NOW(),
+         last_modified_by_role = EXCLUDED.last_modified_by_role,
+         last_modified_by_id = EXCLUDED.last_modified_by_id,
+         updated_at = NOW()
+       RETURNING webhook_signing_secret`,
+      [merchant.id, newSecret, auth.role, Number(auth.userId) || null],
+    );
+    return res.json({ credential, value: upsert.rows[0].webhook_signing_secret });
+  } catch (error) {
+    console.log("Merchant integration regenerate error:", error.message);
+    res.status(500).json({ message: "Could not regenerate credential" });
+  }
+});
+
+// POST /test-connectivity — pure diagnostic. Sends a signed test ping (when a
+// webhook secret is configured) to an admin-supplied URL and reports back
+// reachability/latency. Writes nothing to any transaction table.
+app.post("/api/admin/merchant-integrations/:merchantId/test-connectivity", async (req, res) => {
+  try {
+    const ctx = await loadMerchantForIntegrationAdmin(req, res, req.params.merchantId);
+    if (!ctx) return;
+    const { merchant } = ctx;
+
+    const webhookUrl = String(req.body?.webhook_url || "");
+    if (!webhookSecurity.isSafeHttpUrl(webhookUrl)) {
+      return res.status(400).json({ message: "webhook_url must be a valid http or https URL" });
+    }
+
+    const secret = await lookupWebhookSigningSecret(merchant.id);
+    const payload = { event: "integration.test", merchant_id: merchant.id, sent_at: new Date().toISOString() };
+    const rawBody = JSON.stringify(payload);
+    const headers = { "Content-Type": "application/json" };
+    const deliveryId = webhookSecurity.generateDeliveryId();
+    if (secret) {
+      headers["X-MasterPay-Signature"] = webhookSecurity.signPayload(secret, rawBody);
+      headers["X-MasterPay-Event"] = "integration.test";
+      headers["X-MasterPay-Delivery-Id"] = deliveryId;
+    }
+
+    const startedAt = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
+      const r = await fetch(webhookUrl, { method: "POST", headers, body: rawBody, signal: controller.signal });
+      clearTimeout(timeout);
+      const latencyMs = Date.now() - startedAt;
+      return res.json({
+        ok: r.status >= 200 && r.status < 300,
+        status: r.status,
+        latency_ms: latencyMs,
+        signed: !!secret,
+        delivery_id: deliveryId,
+      });
+    } catch (err) {
+      return res.json({
+        ok: false,
+        status: null,
+        latency_ms: Date.now() - startedAt,
+        signed: !!secret,
+        delivery_id: deliveryId,
+        error: err.message,
+      });
+    }
+  } catch (error) {
+    console.log("Merchant integration test-connectivity error:", error.message);
+    res.status(500).json({ message: "Could not test connectivity" });
+  }
 });
 
 // ─── merchant ────────────────────────────────────────────────────────────
@@ -9742,7 +10294,8 @@ app.get(
       const merchant = req.merchantApiUser;
       const { transactionId } = req.params;
 
-      console.log("AUTH USER:", merchant);
+      // Redacted — merchant carries m.api_key; never log full auth objects.
+      console.log("AUTH USER merchant_id:", merchant?.merchant_id);
       console.log("PARAM transactionId:", transactionId);
 
       const txnInput = String(transactionId).trim();
@@ -9861,6 +10414,29 @@ app.post(
         return res
           .status(400)
           .json({ success: false, message: "Valid amount is required" });
+      }
+      // Reject javascript:/file:/data:/etc — only http(s) is deliverable via
+      // fetch() anyway, so this cannot break any currently-working merchant.
+      if (webhook_url && !webhookSecurity.isSafeHttpUrl(webhook_url)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "webhook_url must be a valid http or https URL" });
+      }
+      if (redirect_url && !webhookSecurity.isSafeHttpUrl(redirect_url)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "redirect_url must be a valid http or https URL" });
+      }
+      // Optional per-merchant allowlist (merchant_integration_configs). No
+      // row / empty array (the default for every pre-existing merchant) means
+      // no restriction is applied.
+      if (
+        webhook_url &&
+        !webhookSecurity.isAllowedWebhookDomain(webhook_url, merchant.allowed_webhook_domains)
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "webhook_url domain is not in the allowed list for this merchant" });
       }
       if (!merchant.agent_id) {
         return res
@@ -11609,43 +12185,22 @@ app.get("/api/daily-report/download", async (req, res) => {
 // ─── WITHDRAWAL SUBSYSTEM ──────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Always attempt 1 of a fresh delivery — see fireWebhook's comment for the
+// same rationale on the Pay-In side. sweepWithdrawalWebhookRetries handles
+// subsequent attempts. Payload formatter (buildPayoutWebhookPayload) is
+// intentionally separate from the Pay-In one — do not merge them.
 async function fireWithdrawalWebhook(txn) {
   if (!txn || !txn.webhook_url || !txn.webhook_url.trim()) return;
   const webhookUrl = txn.webhook_url.trim();
-  const payload = {
-    transactionId: txn.transaction_id,
-    status: txn.status,
-    amount: Number(txn.amount),
-    utr_number: txn.utr_number || null,
-  };
-
-  console.log(`[WITHDRAWAL WEBHOOK] firing for txn ${txn.id} → ${webhookUrl}`);
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    const r = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    const body = await r.text();
-    const logMsg = `status=${r.status} body=${body.substring(0, 500)}`;
-    await pool
-      .query(
-        `UPDATE withdrawal_transactions SET webhook_sent = true, webhook_response = $1 WHERE id = $2`,
-        [logMsg, txn.id],
-      )
-      .catch(() => {});
-  } catch (err) {
-    await pool
-      .query(
-        `UPDATE withdrawal_transactions SET webhook_sent = false, webhook_response = $1 WHERE id = $2`,
-        [`error: ${err.message}`, txn.id],
-      )
-      .catch(() => {});
-  }
+  const payload = buildPayoutWebhookPayload(txn);
+  await attemptWebhookDelivery({
+    table: "withdrawal_transactions",
+    txn,
+    payload,
+    eventName: "payout.status",
+    webhookUrl,
+    isRetry: false,
+  });
 }
 
 // ─── Payout provider integration (a24h / FirstPay) ──────────────────────────
@@ -12440,12 +12995,21 @@ async function authenticateMerchantWithdrawalApiKey(req, res, next) {
         });
 
     const result = await pool.query(
-      `SELECT wmc.merchant_id, wmc.max_payment_limit, wmc.max_available_limit, wmc.commission_percent, wmc.is_active AS config_active,
-              wmc.sspay_api_key, wmc.sspay_enabled, wmc.payout_provider, wmc.firstpay_api_key, wmc.survey_api_key,
-              m.name AS merchant_name, m.agent_id, m.is_active AS merchant_active
-       FROM withdrawal_merchant_configs wmc
-       JOIN merchants m ON m.id = wmc.merchant_id
-       WHERE wmc.api_key = $1 LIMIT 1`,
+      MERCHANT_INTEGRATION_CONFIG_ENABLED
+        ? `SELECT wmc.merchant_id, wmc.max_payment_limit, wmc.max_available_limit, wmc.commission_percent, wmc.is_active AS config_active,
+                  wmc.sspay_api_key, wmc.sspay_enabled, wmc.payout_provider, wmc.firstpay_api_key, wmc.survey_api_key,
+                  m.name AS merchant_name, m.agent_id, m.is_active AS merchant_active,
+                  mic.is_enabled AS integration_enabled, mic.allowed_webhook_domains
+           FROM withdrawal_merchant_configs wmc
+           JOIN merchants m ON m.id = wmc.merchant_id
+           LEFT JOIN merchant_integration_configs mic ON mic.merchant_id = m.id
+           WHERE wmc.api_key = $1 LIMIT 1`
+        : `SELECT wmc.merchant_id, wmc.max_payment_limit, wmc.max_available_limit, wmc.commission_percent, wmc.is_active AS config_active,
+                  wmc.sspay_api_key, wmc.sspay_enabled, wmc.payout_provider, wmc.firstpay_api_key, wmc.survey_api_key,
+                  m.name AS merchant_name, m.agent_id, m.is_active AS merchant_active
+           FROM withdrawal_merchant_configs wmc
+           JOIN merchants m ON m.id = wmc.merchant_id
+           WHERE wmc.api_key = $1 LIMIT 1`,
       [apiKey],
     );
     if (result.rows.length === 0)
@@ -12464,6 +13028,18 @@ async function authenticateMerchantWithdrawalApiKey(req, res, next) {
         .status(403)
         .json({
           message: "Merchant inactive",
+          code: 403,
+          data: {},
+          error: true,
+        });
+
+    // merchant_integration_configs opt-in gate — see authenticateMerchantApiKey
+    // for the matching Pay-In check. No row / is_enabled=true is a no-op.
+    if (cfg.integration_enabled === false)
+      return res
+        .status(403)
+        .json({
+          message: "Merchant integration is disabled",
           code: 403,
           data: {},
           error: true,
@@ -12515,6 +13091,32 @@ app.post(
             data: {},
             error: true,
           });
+
+      // Reject javascript:/file:/data:/etc — mirrors the same check on
+      // Pay-In's webhook_url. Cannot break any currently-working merchant.
+      if (webhookUrl && !webhookSecurity.isSafeHttpUrl(webhookUrl)) {
+        return res
+          .status(400)
+          .json({
+            message: "webhookUrl must be a valid http or https URL",
+            code: 400,
+            data: {},
+            error: true,
+          });
+      }
+      if (
+        webhookUrl &&
+        !webhookSecurity.isAllowedWebhookDomain(webhookUrl, merchant.allowed_webhook_domains)
+      ) {
+        return res
+          .status(400)
+          .json({
+            message: "webhookUrl domain is not in the allowed list for this merchant",
+            code: 400,
+            data: {},
+            error: true,
+          });
+      }
 
       if (transaction_type === "upi" && (!upi_id || !String(upi_id).trim())) {
         return res
@@ -15330,22 +15932,133 @@ app.post("/api/test/checkout/:ref/dispute", async (req, res) => {
 
 // ── END MASTERPAY TEST MODE ───────────────────────────────────
 
+// ── Webhook delivery retry sweep ────────────────────────────────────────────
+// Claims due, undelivered rows with FOR UPDATE SKIP LOCKED inside a short
+// transaction (released before the slow network call) so overlapping ticks —
+// or, in a future multi-instance deployment, multiple app processes — can
+// never send the same delivery twice. `table` is only ever one of the two
+// literals passed by the two sweep wrappers below, never request-derived.
+async function claimWebhookRetryBatch(table) {
+  if (table !== "transactions" && table !== "withdrawal_transactions") {
+    throw new Error(`claimWebhookRetryBatch: invalid table "${table}"`);
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const claimed = await client.query(
+      `SELECT * FROM ${table}
+       WHERE webhook_url IS NOT NULL AND webhook_url <> ''
+         AND webhook_delivered_at IS NULL
+         AND webhook_next_retry_at IS NOT NULL
+         AND webhook_next_retry_at <= NOW()
+         AND webhook_attempts < $1
+       ORDER BY webhook_next_retry_at
+       LIMIT 20
+       FOR UPDATE SKIP LOCKED`,
+      [WEBHOOK_MAX_RETRY_ATTEMPTS],
+    );
+    if (claimed.rows.length > 0) {
+      // Clear next_retry_at immediately so a slow attempt can't be re-claimed
+      // by the next tick before attemptWebhookDelivery finishes and rewrites it.
+      await client.query(
+        `UPDATE ${table} SET webhook_next_retry_at = NULL WHERE id = ANY($1::int[])`,
+        [claimed.rows.map((r) => r.id)],
+      );
+    }
+    await client.query("COMMIT");
+    return claimed.rows;
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+async function sweepPayinWebhookRetries() {
+  if (!MERCHANT_INTEGRATION_CONFIG_ENABLED) return;
+  try {
+    const rows = await claimWebhookRetryBatch("transactions");
+    for (const txn of rows) {
+      // Rebuilds from the transaction's CURRENT status rather than any stale
+      // cached payload — if the status moved on again since the failed
+      // attempt, the retry naturally reflects the latest state.
+      const eventName = PAYIN_EVENT_BY_STATUS[txn.status];
+      if (!eventName || !txn.webhook_url) continue;
+      const payload = buildPayinWebhookPayload(txn, eventName);
+      await attemptWebhookDelivery({
+        table: "transactions",
+        txn,
+        payload,
+        eventName,
+        webhookUrl: txn.webhook_url.trim(),
+        isRetry: true,
+      });
+    }
+  } catch (e) {
+    console.log("[WEBHOOK RETRY] payin sweep error:", e.message);
+  }
+}
+
+async function sweepWithdrawalWebhookRetries() {
+  if (!MERCHANT_INTEGRATION_CONFIG_ENABLED) return;
+  try {
+    const rows = await claimWebhookRetryBatch("withdrawal_transactions");
+    for (const txn of rows) {
+      if (!txn.webhook_url) continue;
+      const payload = buildPayoutWebhookPayload(txn);
+      await attemptWebhookDelivery({
+        table: "withdrawal_transactions",
+        txn,
+        payload,
+        eventName: "payout.status",
+        webhookUrl: txn.webhook_url.trim(),
+        isRetry: true,
+      });
+    }
+  } catch (e) {
+    console.log("[WEBHOOK RETRY] withdrawal sweep error:", e.message);
+  }
+}
+
+async function sweepWebhookRetries() {
+  await sweepPayinWebhookRetries();
+  await sweepWithdrawalWebhookRetries();
+}
+
 function startDatabaseBackgroundJobs() {
-  // Every database-dependent task is registered only after the full schema,
-  // migrations, indexes, and seeds have completed successfully.
-  setInterval(expirePendingTransactions, 60 * 1000);
-  void expirePendingTransactions();
+  // Test-harness escape hatch — these pre-existing jobs perform real external
+  // I/O (SMTP alerts, SSPay/ledger provider calls) that must never fire
+  // against whatever database a test run happens to be pointed at. Unset (or
+  // any value other than "true") preserves current production behaviour
+  // exactly. The webhook retry sweep below is deliberately NOT part of this
+  // gate — it always registers, in both branches — because it is provably
+  // inert for every row that predates this feature (see migration 004: it
+  // only ever acts on rows where webhook_next_retry_at IS NOT NULL).
+  if (process.env.DISABLE_BACKGROUND_JOBS === "true") {
+    console.log("Pre-existing background jobs disabled (DISABLE_BACKGROUND_JOBS=true) — webhook retry sweep still runs.");
+  } else {
+    // Every database-dependent task is registered only after the full schema,
+    // migrations, indexes, and seeds have completed successfully.
+    setInterval(expirePendingTransactions, 60 * 1000);
+    void expirePendingTransactions();
 
-  // Overdue UTR alert scan — every 5 minutes is frequent enough that, at the
-  // default 60-minute threshold, an alert goes out within 5 minutes of crossing
-  // it, without re-querying the whole transactions table every request cycle.
-  setInterval(scanOverdueUtrAlerts, 5 * 60 * 1000);
-  void scanOverdueUtrAlerts();
+    // Overdue UTR alert scan — every 5 minutes is frequent enough that, at the
+    // default 60-minute threshold, an alert goes out within 5 minutes of crossing
+    // it, without re-querying the whole transactions table every request cycle.
+    setInterval(scanOverdueUtrAlerts, 5 * 60 * 1000);
+    void scanOverdueUtrAlerts();
 
-  setInterval(pollSspayPendingWithdrawals, 90 * 1000);
-  void pollSspayPendingWithdrawals();
+    setInterval(pollSspayPendingWithdrawals, 90 * 1000);
+    void pollSspayPendingWithdrawals();
 
-  startLedgerSyncJob();
+    startLedgerSyncJob();
+  }
+
+  // Webhook delivery retries (Pay-In + Pay-Out) — bounded exponential backoff,
+  // see WEBHOOK_MAX_RETRY_ATTEMPTS / WEBHOOK_RETRY_SWEEP_INTERVAL_MS.
+  setInterval(sweepWebhookRetries, WEBHOOK_RETRY_SWEEP_INTERVAL_MS);
+  void sweepWebhookRetries();
 }
 
 async function startServer() {

@@ -74,6 +74,7 @@ import WithdrawalConfigs from "./pages/WithdrawalConfigs";
 import WithdrawalTransactions from "./pages/WithdrawalTransactions";
 import WithdrawalLogs from "./pages/WithdrawalLogs";
 import DomainConfig from "./pages/admin/DomainConfig";
+import MerchantApiIntegration from "./pages/admin/MerchantApiIntegration";
 import MerchantWithdrawals from "./pages/merchant/Withdrawals";
 import MerchantSandbox from "./pages/merchant/Sandbox";
 import MerchantWithdrawalSandbox from "./pages/merchant/WithdrawalSandbox";
@@ -209,6 +210,11 @@ function ProtectedLayout() {
             <Route
               path="/domain-config"
               element={<DomainConfig />}
+            />
+
+            <Route
+              path="/merchant-api-integration"
+              element={<MerchantApiIntegration />}
             />
 
             {/* TEST MODE — admin panel */}

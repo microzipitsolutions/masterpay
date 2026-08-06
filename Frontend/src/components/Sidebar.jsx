@@ -9,7 +9,7 @@ import {
   SidebarLink,
   SidebarLabel,
 } from "./ui/SidebarShell";
-import { LayoutDashboard, ArrowDownToLine, Wallet2, FlaskConical } from "lucide-react";
+import { LayoutDashboard, ArrowDownToLine, Wallet2, FlaskConical, Plug } from "lucide-react";
 
 function Sidebar() {
   const session = getCurrentSession();
@@ -110,6 +110,13 @@ function Sidebar() {
           <SidebarLink to="/tickets" end>Merchant Tickets</SidebarLink>
           <SidebarLink to="/login-activity" end>Login Activity</SidebarLink>
         </SidebarSection>
+
+        {/* ── Merchant API Integration — onboard external platforms (e.g.
+            TrustPay) as MasterPay merchants; masked credentials, webhook
+            signing, retries ─── */}
+        <SidebarTopLink to="/merchant-api-integration" icon={Plug}>
+          Merchant API Integration
+        </SidebarTopLink>
 
         {/* ── Domain Config — only for admins with a client ─── */}
         {hasClient && <SidebarTopLink to="/domain-config">Domain Config</SidebarTopLink>}
