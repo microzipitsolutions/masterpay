@@ -39,7 +39,13 @@ function AgentSidebar() {
         <SidebarTopLink to="/agent-dashboard" icon={LayoutDashboard}>
           Dashboard
         </SidebarTopLink>
-        <SidebarTopLink to="/agent/external-merchants" icon={Store}>Pay-In Requests</SidebarTopLink>
+        <SidebarSection icon={Store} title="Pay-In Transactions" defaultOpen={true}>
+          <SidebarLink to="/agent/external-merchants">Pay-In Transactions</SidebarLink>
+          <SidebarSubSection title="Payment Proof" defaultOpen={true}>
+            <SidebarLink to="/agent/payment-proof/create">Create Proof</SidebarLink>
+            <SidebarLink to="/agent/transaction-payment-proof">Proof List</SidebarLink>
+          </SidebarSubSection>
+        </SidebarSection>
 
         {/* Wallet */}
         <SidebarSection icon={Wallet} title="Wallet" defaultOpen={true}>
@@ -68,11 +74,6 @@ function AgentSidebar() {
             <SidebarLink to="/agent/settlement-transactions">
               Settlement Transactions
             </SidebarLink>
-          </SidebarSubSection>
-
-          <SidebarSubSection title="Payment Proof" defaultOpen={true}>
-            <SidebarLink to="/agent/payment-proof/create">Create</SidebarLink>
-            <SidebarLink to="/agent/transaction-payment-proof">List</SidebarLink>
           </SidebarSubSection>
 
           <SidebarSubSection title="Withdrawals" defaultOpen={false}>

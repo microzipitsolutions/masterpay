@@ -36,6 +36,7 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_tenant_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_merchant_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_transaction_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_payload JSONB;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_proof_metadata JSONB;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tp_transactions_unique ON transactions(external_tenant_id, external_transaction_id)
   WHERE external_tenant_id IS NOT NULL AND external_transaction_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_tp_transactions_assignment ON transactions(external_assignment_id, id DESC);

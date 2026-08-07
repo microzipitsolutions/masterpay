@@ -791,6 +791,8 @@ function handleKnownValidationError(res, error) {
 // firing immediately (fireWebhook) and by the retry sweep, which rebuilds the
 // payload from the transaction's current row rather than caching a stale copy.
 const PAYIN_STATUS_BY_EVENT = {
+  "payin.pending": "Pending",
+  "payin.utr_submitted": "UTR Submitted",
   "payin.approved": "Approved",
   "payin.rejected": "Rejected",
   "payin.expired": "Expired",
@@ -834,8 +836,9 @@ function buildPayinWebhookPayload(txn, eventName) {
     payload.external_transaction_id = txn.external_transaction_id;
     payload.proof = {
       url: txn.payment_proof || null,
-      reference: txn.payment_proof || null,
-      file_name: txn.payment_proof ? path.basename(txn.payment_proof) : null,
+      reference: txn.payment_proof_metadata?.reference || txn.payment_proof || null,
+      file_name: txn.payment_proof_metadata?.file_name || (txn.payment_proof ? path.basename(txn.payment_proof) : null),
+      metadata: txn.payment_proof_metadata || null,
       uploaded_at: txn.utr_submitted_at || null,
     };
     payload.timestamps = {
@@ -919,7 +922,9 @@ async function attemptWebhookDelivery({ table, txn, payload, eventName, webhookU
       : webhookSecurity.generateDeliveryId();
   const attemptNumber = isRetry ? (Number(txn.webhook_attempts) || 0) + 1 : 1;
 
-  const signingSecret = await lookupWebhookSigningSecret(txn.merchant_id);
+  const signingSecret = txn.external_assignment_id
+    ? TRUSTPAY_HMAC_SECRET
+    : await lookupWebhookSigningSecret(txn.merchant_id);
   const rawBody = JSON.stringify(payload);
   const headers = { "Content-Type": "application/json" };
   if (signingSecret) {
@@ -2745,6 +2750,7 @@ async function initializeDatabase() {
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_merchant_id TEXT`);
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_transaction_id TEXT`);
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_payload JSONB`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_proof_metadata JSONB`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tp_transactions_unique ON transactions(external_tenant_id, external_transaction_id) WHERE external_tenant_id IS NOT NULL AND external_transaction_id IS NOT NULL`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_tp_transactions_assignment ON transactions(external_assignment_id, id DESC)`);
 
@@ -7662,6 +7668,51 @@ app.post("/api/external/trustpay/payins", authenticateTrustPay, async (req,res) 
   } catch(e){await db.query("ROLLBACK").catch(()=>{}); if(e.code==="23505")return res.status(409).json({success:false,message:"Duplicate TrustPay request"});console.error("TrustPay payin error:",e.message);res.status(500).json({success:false,message:"Could not create TrustPay Pay-In"});}finally{db.release();}
 });
 
+app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticateTrustPay, async (req,res) => {
+  const db=await pool.connect();
+  try {
+    const tenant=String(req.body?.tenant_id||"").trim();
+    const externalTxn=String(req.body?.external_transaction_id||"").trim();
+    const masterpayId=String(req.params.masterpayTransactionId||"").trim();
+    const masterpayRef=String(req.body?.masterpay_transaction_ref||"").trim();
+    const utr=String(req.body?.utr_number||"").trim();
+    const key=String(req.headers["idempotency-key"]||"").trim();
+    const proof=req.body?.proof && typeof req.body.proof === "object" ? req.body.proof : {};
+    if(!tenant||!externalTxn||!masterpayId||!utr||!key) return res.status(400).json({success:false,message:"tenant_id, external_transaction_id, MasterPay transaction id, utr_number and Idempotency-Key are required"});
+    if(utr.length>150) return res.status(400).json({success:false,message:"UTR number is too long"});
+    const digest=crypto.createHash("sha256").update(req.rawBody||"").digest("hex");
+    await db.query("BEGIN");
+    const prior=await db.query(`SELECT request_digest,details FROM trustpay_external_audit_logs WHERE tenant_id=$1 AND event_type='payin.utr_submitted' AND idempotency_key=$2 FOR UPDATE`,[tenant,key]);
+    if(prior.rows.length){
+      if(prior.rows[0].request_digest!==digest){await db.query("ROLLBACK");return res.status(409).json({success:false,message:"Idempotency key reused with different request"});}
+      const replay=await db.query(`SELECT * FROM transactions WHERE id=$1`,[prior.rows[0].details?.transaction_id]);
+      await db.query("ROLLBACK");
+      if(!replay.rows.length) return res.status(409).json({success:false,message:"Idempotent transaction no longer exists"});
+      return res.json({success:true,idempotent_replay:true,transaction:replay.rows[0]});
+    }
+    const found=await db.query(`SELECT t.* FROM transactions t JOIN trustpay_external_merchant_assignments x ON x.id=t.external_assignment_id
+      WHERE t.id::text=$1 AND t.external_tenant_id=$2 AND t.external_transaction_id=$3
+        AND ($4='' OR t.transaction_id=$4) AND x.tenant_id=$2 FOR UPDATE OF t`,[masterpayId,tenant,externalTxn,masterpayRef]);
+    if(!found.rows.length){await db.query("ROLLBACK");return res.status(404).json({success:false,message:"Mapped external Pay-In not found"});}
+    const current=found.rows[0];
+    if(["Approved","Rejected","Failed","Expired"].includes(current.status) && String(current.utr_number||"").toLowerCase()!==utr.toLowerCase()){
+      await db.query("ROLLBACK");return res.status(409).json({success:false,message:`Cannot change UTR on ${current.status} Pay-In`});
+    }
+    const proofUrl=String(proof.url||"").trim()||null;
+    const proofMetadata={...(proof.metadata&&typeof proof.metadata==="object"?proof.metadata:{}),reference:String(proof.reference||proofUrl||"").trim()||null,source:"trustpay"};
+    const updated=(await db.query(`UPDATE transactions SET utr_number=$1,
+      payment_proof=COALESCE($2,payment_proof),payment_proof_metadata=$3,
+      status=CASE WHEN status IN ('Pending','UTR Submitted') THEN 'UTR Submitted' ELSE status END,
+      utr_submitted_at=COALESCE(utr_submitted_at,NOW()),approved_or_reject_date=CASE WHEN status IN ('Pending','UTR Submitted') THEN NULL ELSE approved_or_reject_date END
+      WHERE id=$4 RETURNING *`,[utr,proofUrl,proofMetadata,current.id])).rows[0];
+    await db.query(`INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,external_merchant_id,external_transaction_id,agent_id,request_digest,outcome,details)
+      VALUES($1,'payin.utr_submitted',$2,$3,$4,$5,$6,'accepted',$7)`,[tenant,key,updated.external_merchant_id,externalTxn,updated.agent_id,digest,{transaction_id:updated.id,masterpay_transaction_ref:updated.transaction_id}]);
+    await db.query("COMMIT");
+    await fireWebhook(pool,updated,"payin.utr_submitted");
+    return res.json({success:true,transaction:updated});
+  }catch(e){await db.query("ROLLBACK").catch(()=>{});console.error("TrustPay UTR sync error:",e.message);return res.status(500).json({success:false,message:"Could not synchronize external Pay-In UTR"});}finally{db.release();}
+});
+
 app.get("/api/agent/external-merchants", async (req, res) => {
   try {
     const auth = getAuthUser(req);
@@ -7675,7 +7726,7 @@ app.get("/api/agent/external-merchants", async (req, res) => {
                 'external_transaction_id',t.external_transaction_id,
                 'merchant_order_id',t.merchant_order_id,'amount',t.amount,
                 'status',t.status,'utr_number',t.utr_number,
-                'payment_proof',t.payment_proof,'created_at',t.created_at,
+                'payment_proof',t.payment_proof,'payment_proof_metadata',t.payment_proof_metadata,'created_at',t.created_at,
                 'approved_or_reject_date',t.approved_or_reject_date
               ) ORDER BY t.id DESC) AS transactions
          FROM trustpay_external_merchant_assignments x
@@ -10600,7 +10651,7 @@ app.get(
         `SELECT t.id, t.transaction_id, t.merchant_order_id, t.amount,
               t.customer_name, t.customer_mobile, t.utr_number,
               t.status, t.approved_or_reject_date, t.created_at,
-              t.payment_proof, t.utr_submitted_at, t.external_assignment_id,
+              t.payment_proof, t.payment_proof_metadata, t.utr_submitted_at, t.external_assignment_id,
               a.external_agent_id, a.name AS operator_name, a.username AS operator_username
        FROM transactions t
        LEFT JOIN agents a ON a.id = t.agent_id
@@ -10636,7 +10687,7 @@ app.get(
           transaction.payment_proof = /^https?:\/\//i.test(proofPath)
             ? proofPath
             : `${publicBase}${proofPath.startsWith("/") ? "" : "/"}${proofPath}`;
-          transaction.proof_metadata = {
+          transaction.proof_metadata = transaction.payment_proof_metadata || {
             file_name: path.basename(proofPath),
             uploaded_at: transaction.utr_submitted_at || null,
           };
