@@ -22,6 +22,9 @@ const MERCHANT_INTEGRATION_CONFIG_ENABLED = process.env.MERCHANT_INTEGRATION_CON
 const WEBHOOK_TIMEOUT_MS = Number(process.env.WEBHOOK_TIMEOUT_MS) || 10000;
 const WEBHOOK_RETRY_SWEEP_INTERVAL_MS = Number(process.env.WEBHOOK_RETRY_SWEEP_INTERVAL_MS) || 60 * 1000;
 const WEBHOOK_MAX_RETRY_ATTEMPTS = Number(process.env.WEBHOOK_MAX_RETRY_ATTEMPTS) || 6;
+const TRUSTPAY_API_KEY = String(process.env.TRUSTPAY_ASSIGNMENT_API_KEY || "");
+const TRUSTPAY_HMAC_SECRET = String(process.env.TRUSTPAY_HMAC_SECRET || "");
+const TRUSTPAY_SIGNATURE_TOLERANCE_SECONDS = Number(process.env.TRUSTPAY_SIGNATURE_TOLERANCE_SECONDS) || 300;
 
 const app = express();
 
@@ -66,6 +69,32 @@ const XLSX = require("xlsx");
 
 const upload = multer({
   storage: multer.memoryStorage(),
+});
+
+// Transaction proof files must be durable. The generic uploader above is
+// intentionally memory-backed for import endpoints, so using it here produced
+// `/uploads/undefined` and discarded the bytes after the request completed.
+const transactionProofUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      cb(null, `payment-proof-${Date.now()}-${crypto.randomBytes(8).toString("hex")}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = new Set([
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+      "image/svg+xml",
+      "application/pdf",
+    ]);
+    if (allowed.has(file.mimetype)) cb(null, true);
+    else cb(new Error("Only image or PDF payment proof files are allowed"));
+  },
 });
 
 // Disk-storage uploader for settlement proof files (image / PDF) served via /uploads.
@@ -179,43 +208,65 @@ const uploadCompanyQr = (req, res, next) =>
     next();
   });
 
+// Client-supplied role/userid/agentid/merchantid headers must NEVER be
+// trusted as identity — that is a full authentication bypass (anyone could
+// impersonate any role with zero credentials). The only exception is this
+// project's own local integration test harness (see
+// Backend/tests/trustpay-integration.test.js), which needs a way to act as
+// a seeded admin without standing up a full login flow. That exception must
+// be explicitly opted into with ALLOW_DEV_HEADER_AUTH=true AND is hard-blocked
+// whenever NODE_ENV=production, regardless of the flag, so it can never be
+// mistakenly left on in a real deployment.
+function isDevHeaderAuthAllowed() {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.ALLOW_DEV_HEADER_AUTH === "true"
+  );
+}
+
 function getAuthUser(req) {
   try {
-    let auth = {
-      role: req.headers.role || null,
-      userId: req.headers.userid || null,
-      agentId: req.headers.agentid || null,
-      merchantId: req.headers.merchantid || null,
-    };
-
     const authHeader = req.headers.authorization;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
-      auth = jwt.verify(token, process.env.JWT_SECRET);
+      const auth = jwt.verify(token, process.env.JWT_SECRET);
+
+      const viewRole = req.headers.viewrole;
+      const viewId = req.headers.viewid;
+
+      // Only Admin can view-as another role now (Agent no longer has a
+      // child role to view as — Agent was folded directly into Agent).
+      if (viewRole && viewId && auth.role === "admin") {
+        return {
+          ...auth,
+          originalRole: auth.role,
+          originalUserId: auth.userId,
+
+          role: viewRole,
+          userId: Number(viewId),
+
+          merchantId: viewRole === "merchant" ? Number(viewId) : auth.merchantId,
+
+          agentId: viewRole === "agent" ? Number(viewId) : auth.agentId,
+        };
+      }
+
+      return auth;
     }
 
-    const viewRole = req.headers.viewrole;
-    const viewId = req.headers.viewid;
-
-    // Only Admin can view-as another role now (Agent no longer has a
-    // child role to view as — Agent was folded directly into Agent).
-    if (viewRole && viewId && auth.role === "admin") {
+    // No valid JWT presented — unauthenticated, unless the dev-only test
+    // harness flag above is active.
+    if (isDevHeaderAuthAllowed()) {
       return {
-        ...auth,
-        originalRole: auth.role,
-        originalUserId: auth.userId,
-
-        role: viewRole,
-        userId: Number(viewId),
-
-        merchantId: viewRole === "merchant" ? Number(viewId) : auth.merchantId,
-
-        agentId: viewRole === "agent" ? Number(viewId) : auth.agentId,
+        role: req.headers.role || null,
+        userId: req.headers.userid || null,
+        agentId: req.headers.agentid || null,
+        merchantId: req.headers.merchantid || null,
       };
     }
 
-    return auth;
+    return { role: null, userId: null };
   } catch {
     return {
       role: null,
@@ -741,6 +792,7 @@ function handleKnownValidationError(res, error) {
 // payload from the transaction's current row rather than caching a stale copy.
 const PAYIN_STATUS_BY_EVENT = {
   "payin.approved": "Approved",
+  "payin.rejected": "Rejected",
   "payin.expired": "Expired",
   "payin.failed": "Failed",
   "payin.disputed": "Disputed",
@@ -752,7 +804,7 @@ const PAYIN_EVENT_BY_STATUS = Object.fromEntries(
 function buildPayinWebhookPayload(txn, eventName) {
   const eventStatus = PAYIN_STATUS_BY_EVENT[eventName] || "Approved";
   const eventTime = txn.approved_or_reject_date || new Date().toISOString();
-  return {
+  const payload = {
     event: eventName,
     transaction_id: txn.id,
     transaction_ref: txn.transaction_id || null,
@@ -772,6 +824,54 @@ function buildPayinWebhookPayload(txn, eventName) {
     ifsc_code: txn.ifsc_code || null,
     upi_id: txn.upi_id || null,
   };
+  // The expanded contract is isolated to TrustPay-assigned transactions.
+  if (txn.external_assignment_id) {
+    delete payload.transaction_id;
+    payload.source = "trustpay";
+    payload.masterpay_transaction_ref = txn.transaction_id || null;
+    payload.tenant_id = txn.external_tenant_id;
+    payload.external_merchant_id = txn.external_merchant_id;
+    payload.external_transaction_id = txn.external_transaction_id;
+    payload.proof = {
+      url: txn.payment_proof || null,
+      reference: txn.payment_proof || null,
+      file_name: txn.payment_proof ? path.basename(txn.payment_proof) : null,
+      uploaded_at: txn.utr_submitted_at || null,
+    };
+    payload.timestamps = {
+      created_at: txn.created_at || null,
+      utr_submitted_at: txn.utr_submitted_at || null,
+      decided_at: txn.approved_or_reject_date || eventTime,
+      webhook_generated_at: new Date().toISOString(),
+    };
+    payload.agent = { external_agent_id: txn.external_agent_id, name: txn.agent_name || null, username: txn.agent_username || null };
+    payload.merchant = { external_id: txn.external_merchant_id, code: txn.external_merchant_code || null, name: txn.external_merchant_name || null };
+    payload.original_fields = txn.external_payload || {};
+  }
+  return payload;
+}
+
+function safeEqualText(a, b) {
+  const left = Buffer.from(String(a || ""));
+  const right = Buffer.from(String(b || ""));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function authenticateTrustPay(req, res, next) {
+  if (!TRUSTPAY_API_KEY || !TRUSTPAY_HMAC_SECRET) {
+    return res.status(503).json({ success: false, message: "TrustPay integration is not configured" });
+  }
+  const apiKey = req.headers["x-trustpay-api-key"];
+  const timestamp = String(req.headers["x-trustpay-timestamp"] || "");
+  const signature = String(req.headers["x-trustpay-signature"] || "").replace(/^sha256=/i, "");
+  const timestampMs = /^\d+$/.test(timestamp) ? Number(timestamp) * 1000 : NaN;
+  if (!safeEqualText(apiKey, TRUSTPAY_API_KEY)) return res.status(401).json({ success: false, message: "Invalid TrustPay API key" });
+  if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > TRUSTPAY_SIGNATURE_TOLERANCE_SECONDS * 1000) {
+    return res.status(401).json({ success: false, message: "Expired or invalid TrustPay timestamp" });
+  }
+  const expected = crypto.createHmac("sha256", TRUSTPAY_HMAC_SECRET).update(`${timestamp}.${req.rawBody || ""}`).digest("hex");
+  if (!safeEqualText(signature, expected)) return res.status(401).json({ success: false, message: "Invalid TrustPay signature" });
+  next();
 }
 
 function buildPayoutWebhookPayload(txn) {
@@ -886,6 +986,10 @@ async function attemptWebhookDelivery({ table, txn, payload, eventName, webhookU
 // The background sweep (sweepPayinWebhookRetries) handles subsequent attempts.
 async function fireWebhook(pool, txn, eventName = "payin.approved") {
   if (!txn || !txn.webhook_url || !txn.webhook_url.trim()) return;
+  if (txn.external_assignment_id) {
+    const enriched = await pool.query(`SELECT t.*,a.external_agent_id,a.name AS agent_name,a.username AS agent_username,x.external_merchant_name,x.external_merchant_code FROM transactions t LEFT JOIN agents a ON a.id=t.agent_id LEFT JOIN trustpay_external_merchant_assignments x ON x.id=t.external_assignment_id WHERE t.id=$1`, [txn.id]);
+    if (enriched.rows[0]) txn = enriched.rows[0];
+  }
   const webhookUrl = txn.webhook_url.trim();
   const payload = buildPayinWebhookPayload(txn, eventName);
   await attemptWebhookDelivery({ table: "transactions", txn, payload, eventName, webhookUrl, isRetry: false });
@@ -1284,6 +1388,7 @@ async function initializeDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS agents (
         id SERIAL PRIMARY KEY,
+        external_agent_id VARCHAR(37) UNIQUE NOT NULL DEFAULT ('MPAG_' || UPPER(SUBSTRING(MD5(clock_timestamp()::text || ':' || random()::text), 1, 24))),
         name VARCHAR(100) NOT NULL,
         commission_percent NUMERIC DEFAULT 0,
         max_payment_limit NUMERIC DEFAULT 0,
@@ -1296,6 +1401,14 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    await pool.query(`ALTER TABLE agents ADD COLUMN IF NOT EXISTS external_agent_id VARCHAR(37)`);
+    await pool.query(`UPDATE agents SET external_agent_id='MPAG_' || UPPER(SUBSTRING(MD5(id::text || ':' || clock_timestamp()::text || ':' || random()::text),1,24)) WHERE external_agent_id IS NULL OR BTRIM(external_agent_id)=''`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_external_agent_id ON agents(external_agent_id)`);
+    await pool.query(`ALTER TABLE agents ALTER COLUMN external_agent_id SET DEFAULT ('MPAG_' || UPPER(SUBSTRING(MD5(clock_timestamp()::text || ':' || random()::text),1,24)))`);
+    await pool.query(`ALTER TABLE agents ALTER COLUMN external_agent_id SET NOT NULL`);
+    await pool.query(`CREATE OR REPLACE FUNCTION prevent_external_agent_id_change() RETURNS trigger AS $$ BEGIN IF OLD.external_agent_id IS DISTINCT FROM NEW.external_agent_id THEN RAISE EXCEPTION 'external_agent_id is immutable'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql`);
+    await pool.query(`DROP TRIGGER IF EXISTS trg_agents_external_agent_id_immutable ON agents`);
+    await pool.query(`CREATE TRIGGER trg_agents_external_agent_id_immutable BEFORE UPDATE OF external_agent_id ON agents FOR EACH ROW EXECUTE FUNCTION prevent_external_agent_id_change()`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS merchants (
@@ -2613,6 +2726,27 @@ async function initializeDatabase() {
       );
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_merchant_integration_configs_merchant ON merchant_integration_configs(merchant_id);`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS trustpay_external_merchant_assignments (
+      id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, external_merchant_id TEXT NOT NULL,
+      external_merchant_code TEXT, external_merchant_name TEXT NOT NULL,
+      agent_id INTEGER NOT NULL REFERENCES agents(id) ON DELETE RESTRICT, webhook_url TEXT NOT NULL,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb, is_active BOOLEAN NOT NULL DEFAULT true,
+      assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (tenant_id, external_merchant_id))`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tp_assignments_agent ON trustpay_external_merchant_assignments(agent_id, is_active)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS trustpay_external_audit_logs (
+      id BIGSERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, event_type TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL, external_merchant_id TEXT, external_transaction_id TEXT,
+      agent_id INTEGER, request_digest TEXT NOT NULL, outcome TEXT NOT NULL,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (tenant_id, event_type, idempotency_key))`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_assignment_id BIGINT REFERENCES trustpay_external_merchant_assignments(id) ON DELETE RESTRICT`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_tenant_id TEXT`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_merchant_id TEXT`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_transaction_id TEXT`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS external_payload JSONB`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tp_transactions_unique ON transactions(external_tenant_id, external_transaction_id) WHERE external_tenant_id IS NOT NULL AND external_transaction_id IS NOT NULL`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_tp_transactions_assignment ON transactions(external_assignment_id, id DESC)`);
 
     // Webhook delivery retry bookkeeping — additive on the existing Pay-In/Pay-Out
     // transaction tables. webhook_sent/webhook_response (both tables, pre-existing)
@@ -4858,7 +4992,7 @@ app.get("/api/agents", async (req, res) => {
     if (clientId) { conditions.push(`a.client_id = $${values.length+1}`); values.push(clientId); }
     const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
     const result = await pool.query(
-      `SELECT a.id, a.name, a.commission_percent, a.max_available_limit, a.max_payment_limit,
+      `SELECT a.id, a.external_agent_id, a.name, a.commission_percent, a.max_available_limit, a.max_payment_limit,
               a.min_transaction_amount, a.username, a.plain_password, a.is_active, a.created_at,
               (COALESCE(ap.agent_committed, 0) - COALESCE(asl.agent_settled, 0)) AS outstanding_amount
        FROM agents a
@@ -4926,7 +5060,7 @@ app.post("/api/agents", async (req, res) => {
     const result = await pool.query(
       `INSERT INTO agents (name, commission_percent, max_payment_limit, min_transaction_amount, created_by_admin_id, username, password, plain_password, is_active, client_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING id, name, commission_percent, max_payment_limit, min_transaction_amount, username, plain_password, is_active`,
+       RETURNING id, external_agent_id, name, commission_percent, max_payment_limit, min_transaction_amount, username, plain_password, is_active`,
       [name, commission_percent || 0, max_payment_limit || 0, min_transaction_amount || 0, adminId, username, hashedPassword, password, is_active, clientId2]
     );
     await ensureAgentWallet(result.rows[0].id);
@@ -5457,7 +5591,7 @@ app.post("/api/admin/merchant-integrations/:merchantId/reveal", async (req, res)
       return res.status(400).json({ message: "credential must be one of payin_key, payout_key, webhook_secret" });
     }
 
-    console.log(`[MERCHANT INTEGRATION] Reveal ${credential} for merchant ${merchant.id} by ${req.headers.role || "?"}:${req.headers.userid || "?"}`);
+    console.log(`[MERCHANT INTEGRATION] Reveal ${credential} for merchant ${merchant.id} by ${ctx.auth.role || "?"}:${ctx.auth.userId || "?"}`);
 
     if (credential === "payin_key") {
       const r = await pool.query(`SELECT api_key FROM merchants WHERE id = $1`, [merchant.id]);
@@ -5497,7 +5631,7 @@ app.post("/api/admin/merchant-integrations/:merchantId/regenerate", async (req, 
       return res.status(400).json({ message: "confirm:true is required to regenerate a credential" });
     }
 
-    console.log(`[MERCHANT INTEGRATION] Regenerate ${credential} for merchant ${merchant.id} by ${req.headers.role || "?"}:${req.headers.userid || "?"}`);
+    console.log(`[MERCHANT INTEGRATION] Regenerate ${credential} for merchant ${merchant.id} by ${auth.role || "?"}:${auth.userId || "?"}`);
 
     if (credential === "payin_key") {
       // Same generation pattern as POST /api/merchants — one source of truth
@@ -7427,6 +7561,140 @@ app.post("/api/admin/agent-settlement-transactions", async (req, res) => {
 
 // ─── AGENT → AGENT SETTLEMENT ─────────────────────────────────────────────
 // ─── TRANSACTIONS / PAYINS ────────────────────────────────────────────────────
+// TrustPay-facing lookup exposes only the permanent public identifier and safe fields.
+app.get("/api/integration/agents/:externalAgentId", authenticateTrustPay, async (req, res) => {
+  try {
+    const externalAgentId = String(req.params.externalAgentId || "").trim().toUpperCase();
+    if (!/^MPAG_[A-F0-9]{24}$/.test(externalAgentId)) return res.status(400).json({ success:false, message:"Invalid External Agent ID" });
+    const r = await pool.query(`SELECT external_agent_id,name,username,is_active FROM agents WHERE external_agent_id=$1 LIMIT 1`, [externalAgentId]);
+    if (!r.rows.length) return res.status(404).json({ success:false, message:"Agent not found" });
+    res.json({ success:true, agent:r.rows[0] });
+  } catch (e) { console.error("TrustPay agent lookup:",e.message); res.status(500).json({success:false,message:"Could not verify agent"}); }
+});
+
+// Public-ID assignment route. The legacy URL remains accepted but also requires
+// external_agent_id; numeric IDs are no longer accepted by TrustPay APIs.
+app.post(["/api/integration/agents/:externalAgentId/merchants", "/api/external/trustpay/merchant-assignments"], authenticateTrustPay, async (req, res) => {
+  const db = await pool.connect();
+  try {
+    const tenant = String(req.body?.tenant_id || "").trim();
+    const key = String(req.headers["idempotency-key"] || "").trim();
+    const externalAgentId = String(req.params.externalAgentId || req.body?.external_agent_id || "").trim().toUpperCase();
+    const merchants = Array.isArray(req.body?.merchants) ? req.body.merchants : [];
+    if (!tenant || !key || !/^MPAG_[A-F0-9]{24}$/.test(externalAgentId) || !merchants.length) return res.status(400).json({ success:false, message:"tenant_id, valid external_agent_id, merchants and Idempotency-Key are required" });
+    if (merchants.some(m => !m?.merchant_id || !m?.name || !webhookSecurity.isSafeHttpUrl(m?.webhook_url))) return res.status(400).json({ success:false, message:"Each merchant requires merchant_id, name and valid webhook_url" });
+    const digest = crypto.createHash("sha256").update(`${externalAgentId}:${req.rawBody || ""}`).digest("hex");
+    await db.query("BEGIN");
+    const old = await db.query(`SELECT request_digest,details FROM trustpay_external_audit_logs WHERE tenant_id=$1 AND event_type='assignment' AND idempotency_key=$2 FOR UPDATE`, [tenant,key]);
+    if (old.rows.length) { await db.query("ROLLBACK"); if (old.rows[0].request_digest !== digest) return res.status(409).json({ success:false,message:"Idempotency key reused with different request" }); const safe=(old.rows[0].details.assignments||[]).map(x=>({tenant_id:x.tenant_id,external_merchant_id:x.external_merchant_id,external_merchant_code:x.external_merchant_code,external_merchant_name:x.external_merchant_name,is_active:x.is_active,assigned_at:x.assigned_at,updated_at:x.updated_at,external_agent_id:externalAgentId})); return res.json({ success:true,idempotent_replay:true,external_agent_id:externalAgentId,assignments:safe }); }
+    const agent = await db.query(`SELECT id,external_agent_id,name,username,is_active FROM agents WHERE external_agent_id=$1 AND is_active=true`, [externalAgentId]);
+    if (!agent.rows.length) { await db.query("ROLLBACK"); return res.status(404).json({ success:false,message:"Active MasterPay Agent not found" }); }
+    const agentId = agent.rows[0].id;
+    const assignments=[];
+    for (const m of merchants) {
+      const q=await db.query(`INSERT INTO trustpay_external_merchant_assignments (tenant_id,external_merchant_id,external_merchant_code,external_merchant_name,agent_id,webhook_url,metadata) VALUES ($1,$2,$3,$4,$5,$6,$7)
+        ON CONFLICT (tenant_id,external_merchant_id) DO UPDATE SET external_merchant_code=EXCLUDED.external_merchant_code,external_merchant_name=EXCLUDED.external_merchant_name,agent_id=EXCLUDED.agent_id,webhook_url=EXCLUDED.webhook_url,metadata=EXCLUDED.metadata,is_active=true,updated_at=NOW()
+        RETURNING tenant_id,external_merchant_id,external_merchant_code,external_merchant_name,is_active,assigned_at,updated_at`,[tenant,String(m.merchant_id),m.code||null,String(m.name),agentId,m.webhook_url,m.metadata||{}]); assignments.push({...q.rows[0],external_agent_id:externalAgentId});
+    }
+    await db.query(`INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,agent_id,request_digest,outcome,details) VALUES ($1,'assignment',$2,$3,$4,'accepted',$5)`,[tenant,key,agentId,digest,{assignments}]);
+    await db.query("COMMIT"); res.status(201).json({success:true,external_agent_id:externalAgentId,assignments});
+  } catch(e) { await db.query("ROLLBACK").catch(()=>{}); console.error("TrustPay assignment error:",e.message); res.status(500).json({success:false,message:"Could not assign external merchants"}); } finally { db.release(); }
+});
+
+app.delete("/api/integration/agents/:externalAgentId/merchants/:externalMerchantId", authenticateTrustPay, async (req, res) => {
+  const db = await pool.connect();
+  try {
+    const tenant = String(req.query?.tenant_id || "").trim();
+    const externalAgentId = String(req.params.externalAgentId || "").trim().toUpperCase();
+    const externalMerchantId = String(req.params.externalMerchantId || "").trim();
+    const key = String(req.headers["idempotency-key"] || "").trim();
+    if (!tenant || !externalMerchantId || !key || !/^MPAG_[A-F0-9]{24}$/.test(externalAgentId)) {
+      return res.status(400).json({ success: false, message: "tenant_id, merchant, valid external agent and Idempotency-Key are required" });
+    }
+    await db.query("BEGIN");
+    const assignment = (
+      await db.query(
+        `UPDATE trustpay_external_merchant_assignments x
+            SET is_active = false, updated_at = NOW()
+           FROM agents a
+          WHERE x.agent_id = a.id
+            AND x.tenant_id = $1
+            AND x.external_merchant_id = $2
+            AND a.external_agent_id = $3
+          RETURNING x.id, x.agent_id, x.is_active`,
+        [tenant, externalMerchantId, externalAgentId],
+      )
+    ).rows[0] || null;
+    await db.query(
+      `INSERT INTO trustpay_external_audit_logs
+         (tenant_id,event_type,idempotency_key,external_merchant_id,agent_id,request_digest,outcome,details)
+       VALUES($1,'deassignment',$2,$3,$4,$5,'accepted',$6)
+       ON CONFLICT(tenant_id,event_type,idempotency_key) DO NOTHING`,
+      [tenant, key, externalMerchantId, assignment?.agent_id || null, crypto.createHash("sha256").update(`${tenant}:${externalMerchantId}:${externalAgentId}`).digest("hex"), { active: false }],
+    );
+    await db.query("COMMIT");
+    return res.json({ success: true, idempotent_replay: !assignment, external_agent_id: externalAgentId, external_merchant_id: externalMerchantId, is_active: false });
+  } catch (e) {
+    await db.query("ROLLBACK").catch(() => {});
+    console.error("TrustPay deassignment error:", e.message);
+    return res.status(500).json({ success: false, message: "Could not remove external merchant assignment" });
+  } finally {
+    db.release();
+  }
+});
+
+app.post("/api/external/trustpay/payins", authenticateTrustPay, async (req,res) => {
+  const db=await pool.connect();
+  try {
+    const tenant=String(req.body?.tenant_id||"").trim(), merchant=String(req.body?.merchant_id||"").trim(), externalTxn=String(req.body?.transaction_id||"").trim(), key=String(req.headers["idempotency-key"]||"").trim(); const amount=Number(req.body?.amount);
+    if(!tenant||!merchant||!externalTxn||!key||!(amount>0)) return res.status(400).json({success:false,message:"tenant_id, merchant_id, transaction_id, amount and Idempotency-Key are required"});
+    await db.query("BEGIN");
+    const prior=await db.query(`SELECT t.external_transaction_id,t.transaction_id AS masterpay_transaction_ref,t.status,a.external_agent_id FROM transactions t JOIN agents a ON a.id=t.agent_id WHERE t.external_tenant_id=$1 AND t.external_transaction_id=$2`,[tenant,externalTxn]);
+    if(prior.rows.length){await db.query("ROLLBACK");return res.json({success:true,idempotent_replay:true,transaction:prior.rows[0]});}
+    const ar=await db.query(`SELECT x.*,a.external_agent_id,a.created_by_admin_id,a.client_id FROM trustpay_external_merchant_assignments x JOIN agents a ON a.id=x.agent_id WHERE x.tenant_id=$1 AND x.external_merchant_id=$2 AND x.is_active=true AND a.is_active=true FOR UPDATE OF x`,[tenant,merchant]);
+    if(!ar.rows.length){await db.query("ROLLBACK");return res.status(404).json({success:false,message:"No active assignment for tenant and merchant"});} const a=ar.rows[0];
+    const ac=await db.query(`SELECT * FROM agent_accounts WHERE agent_id=$1 AND is_active=true AND COALESCE(min_transaction_amount,0)<=$2 AND (COALESCE(max_payment_limit,0)=0 OR max_payment_limit >= $2) ORDER BY id LIMIT 1`,[a.agent_id,amount]);
+    if(!ac.rows.length){await db.query("ROLLBACK");return res.status(409).json({success:false,message:"Assigned agent has no eligible account"});} const c=ac.rows[0], ref=crypto.randomBytes(12).toString("hex");
+    const ins=await db.query(`INSERT INTO transactions (transaction_id,merchant_order_id,amount,customer_name,customer_mobile,bank_name,ifsc_code,account_number,account_holder_name,upi_id,account_id,agent_id,created_by_admin_id,max_payment_limit,max_available_limit,min_transaction_amount,webhook_url,unique_id,status,checkout_mode,expires_at,client_id,external_assignment_id,external_tenant_id,external_merchant_id,external_transaction_id,external_payload)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'Pending',true,NOW()+($19||' seconds')::interval,$20,$21,$22,$23,$24,$25) RETURNING *`,[ref,req.body.merchant_order_id||externalTxn,amount,req.body.customer_name||"",req.body.customer_mobile||"",c.bank_name||"",c.ifsc_code||"",c.account_number||"",c.account_holder_name||"",c.upi_id||"",c.id,a.agent_id,a.created_by_admin_id,c.max_payment_limit||0,c.max_available_limit||0,c.min_transaction_amount||0,a.webhook_url,externalTxn,String(CHECKOUT_TTL_SECONDS),a.client_id||null,a.id,tenant,merchant,externalTxn,req.body]);
+    await db.query(`INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,external_merchant_id,external_transaction_id,agent_id,request_digest,outcome,details) VALUES ($1,'payin',$2,$3,$4,$5,$6,'accepted',$7)`,[tenant,key,merchant,externalTxn,a.agent_id,crypto.createHash("sha256").update(req.rawBody||"").digest("hex"),{transaction_id:ins.rows[0].id}]);
+    await db.query("COMMIT");res.status(201).json({success:true,external_transaction_id:externalTxn,masterpay_transaction_ref:ref,external_agent_id:a.external_agent_id,status:"Pending"});
+  } catch(e){await db.query("ROLLBACK").catch(()=>{}); if(e.code==="23505")return res.status(409).json({success:false,message:"Duplicate TrustPay request"});console.error("TrustPay payin error:",e.message);res.status(500).json({success:false,message:"Could not create TrustPay Pay-In"});}finally{db.release();}
+});
+
+app.get("/api/agent/external-merchants", async (req, res) => {
+  try {
+    const auth = getAuthUser(req);
+    if (auth.role !== "agent") return res.status(403).json({ message: "Agent authentication required" });
+    const result = await pool.query(
+      `SELECT x.id,a.external_agent_id,x.tenant_id,x.external_merchant_id,
+              x.external_merchant_code,x.external_merchant_name,x.is_active,
+              x.assigned_at,x.updated_at,
+              json_agg(json_build_object(
+                'id',t.id,'transaction_id',t.transaction_id,
+                'external_transaction_id',t.external_transaction_id,
+                'merchant_order_id',t.merchant_order_id,'amount',t.amount,
+                'status',t.status,'utr_number',t.utr_number,
+                'payment_proof',t.payment_proof,'created_at',t.created_at,
+                'approved_or_reject_date',t.approved_or_reject_date
+              ) ORDER BY t.id DESC) AS transactions
+         FROM trustpay_external_merchant_assignments x
+         JOIN agents a ON a.id=x.agent_id
+         JOIN transactions t
+           ON t.external_assignment_id=x.id
+          AND t.agent_id=x.agent_id
+        WHERE x.agent_id=$1
+        GROUP BY x.id,a.external_agent_id
+        ORDER BY MAX(t.created_at) DESC`,
+      [Number(auth.userId)],
+    );
+    return res.json(result.rows);
+  } catch (error) {
+    console.error("Pay-In requests fetch:", error.message);
+    return res.status(500).json({ message: "Could not fetch Pay-In requests" });
+  }
+});
+
 app.get("/api/transactions", async (req, res) => {
   try {
     const auth = getAuthUser(req);
@@ -7881,12 +8149,16 @@ app.post("/api/transactions/:id/rescue", async (req, res) => {
 
 app.put(
   "/api/transactions/:id/proof",
-  upload.single("payment_proof"),
+  transactionProofUpload.single("payment_proof"),
   async (req, res) => {
     const client = await pool.connect();
     try {
       const { id } = req.params;
       const { utr_number } = req.body;
+      const authUser = getAuthUser(req);
+      if (!["agent", "admin", "super-admin"].includes(authUser.role)) {
+        return res.status(403).json({ message: "Authentication required" });
+      }
       const proofPath = req.file ? `/uploads/${req.file.filename}` : "";
       const cleanUtr = String(utr_number || "").trim();
 
@@ -7908,6 +8180,14 @@ app.put(
         return res.status(404).json({ message: "Transaction not found" });
       }
       const current = currentResult.rows[0];
+
+      if (
+        (authUser.role === "agent" && Number(current.agent_id) !== Number(authUser.userId)) ||
+        (authUser.clientId != null && Number(current.client_id) !== Number(authUser.clientId))
+      ) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ message: "Not your transaction" });
+      }
 
       if (current.status === "Approved") {
         await client.query("ROLLBACK");
@@ -8056,6 +8336,10 @@ app.put("/api/transactions/:id", async (req, res) => {
     // Admin / super-admin may approve directly from the edit page, overriding the
     // agent-verified-proof safeguard below (owner-authorized manual approval).
     const authUser = getAuthUser(req);
+    if (!["admin", "super-admin", "agent"].includes(authUser.role)) return res.status(403).json({ message: "Authentication required" });
+    const scopedTxn = await pool.query(`SELECT agent_id FROM transactions WHERE id=$1`, [id]);
+    if (!scopedTxn.rows.length) return res.status(404).json({ message: "Transaction not found" });
+    if (authUser.role === "agent" && Number(scopedTxn.rows[0].agent_id) !== Number(authUser.userId)) return res.status(403).json({ message: "Not your transaction" });
     const isAdminApprover = ["admin", "super-admin"].includes(
       authUser.originalRole || authUser.role,
     );
@@ -8070,11 +8354,27 @@ app.put("/api/transactions/:id", async (req, res) => {
     if (status === "Approved" && !isAdminApprover) {
       const cur = (
         await pool.query(
-          `SELECT checkout_mode, status AS cur_status, amount, utr_number FROM transactions WHERE id = $1`,
+          `SELECT checkout_mode, status AS cur_status, amount, utr_number,
+                  payment_proof, external_assignment_id
+             FROM transactions WHERE id = $1`,
           [id],
         )
       ).rows[0];
-      if (cur && cur.checkout_mode && cur.cur_status !== "Approved") {
+      if (
+        cur?.external_assignment_id &&
+        (!String(utr_number || cur.utr_number || "").trim() ||
+          !String(cur.payment_proof || "").trim())
+      ) {
+        return res.status(400).json({
+          message: "External Pay-In approval requires both UTR and uploaded payment proof",
+        });
+      }
+      if (
+        cur &&
+        cur.checkout_mode &&
+        cur.cur_status !== "Approved" &&
+        !cur.external_assignment_id
+      ) {
         const effUtr = String(utr_number || "").trim() || cur.utr_number || "";
         const effAmount = Number(amount) > 0 ? Number(amount) : Number(cur.amount || 0);
         const match = await pool.query(
@@ -8117,7 +8417,7 @@ app.put("/api/transactions/:id", async (req, res) => {
     );
 
     const updatedTxn = result.rows[0];
-    if (updatedTxn && status === "Approved") fireWebhook(pool, updatedTxn);
+    if (updatedTxn && ["Approved", "Rejected"].includes(status)) fireWebhook(pool, updatedTxn, status === "Approved" ? "payin.approved" : "payin.rejected");
     res.json(updatedTxn);
   } catch (error) {
     if (handleKnownValidationError(res, error)) return; // e.g. duplicate UTR (409)
@@ -9575,13 +9875,7 @@ app.get("/api/merchant-dashboard/details", async (req, res) => {
 app.get("/api/agent-dashboard", async (req, res) => {
   try {
     const auth = getAuthUser(req);
-    const agentId = Number(
-      auth.agentId ||
-        auth.agent_id ||
-        auth.userId ||
-        req.headers.agentid ||
-        req.headers.agent_id,
-    );
+    const agentId = Number(auth.agentId || auth.agent_id || auth.userId);
     const { startDate, endDate } = req.query;
 
     if (!agentId) return res.status(401).json({ message: "Agent not found" });
@@ -10303,15 +10597,18 @@ app.get(
       console.log("txnInput:", txnInput);
 
       const result = await pool.query(
-        `SELECT id, transaction_id, merchant_order_id, amount,
-              customer_name, customer_mobile, utr_number,
-              status, approved_or_reject_date, created_at
-       FROM transactions
-       WHERE merchant_id = $1
+        `SELECT t.id, t.transaction_id, t.merchant_order_id, t.amount,
+              t.customer_name, t.customer_mobile, t.utr_number,
+              t.status, t.approved_or_reject_date, t.created_at,
+              t.payment_proof, t.utr_submitted_at, t.external_assignment_id,
+              a.external_agent_id, a.name AS operator_name, a.username AS operator_username
+       FROM transactions t
+       LEFT JOIN agents a ON a.id = t.agent_id
+       WHERE t.merchant_id = $1
          AND (
-           id::text = $2
-           OR transaction_id::text = $2
-           OR merchant_order_id::text = $2
+           t.id::text = $2
+           OR t.transaction_id::text = $2
+           OR t.merchant_order_id::text = $2
          )
        LIMIT 1`,
         [Number(merchant.merchant_id), txnInput],
@@ -10331,9 +10628,29 @@ app.get(
       console.log("STATUS FETCH SUCCESS");
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
+      const transaction = { ...result.rows[0] };
+      if (transaction.external_assignment_id) {
+        const proofPath = String(transaction.payment_proof || "").trim();
+        if (proofPath) {
+          const publicBase = (process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+          transaction.payment_proof = /^https?:\/\//i.test(proofPath)
+            ? proofPath
+            : `${publicBase}${proofPath.startsWith("/") ? "" : "/"}${proofPath}`;
+          transaction.proof_metadata = {
+            file_name: path.basename(proofPath),
+            uploaded_at: transaction.utr_submitted_at || null,
+          };
+        }
+        transaction.operator = {
+          external_agent_id: transaction.external_agent_id,
+          name: transaction.operator_name || null,
+          username: transaction.operator_username || null,
+        };
+      }
+
       res.json({
         success: true,
-        transaction: result.rows[0],
+        transaction,
       });
     } catch (error) {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -10402,6 +10719,10 @@ app.post(
         customer_mobile,
         webhook_url,
         redirect_url,
+        external_agent_id,
+        external_tenant_id,
+        external_merchant_id,
+        external_transaction_id,
       } = req.body;
       const numericAmount = Number(amount);
 
@@ -10438,7 +10759,42 @@ app.post(
           .status(400)
           .json({ success: false, message: "webhook_url domain is not in the allowed list for this merchant" });
       }
-      if (!merchant.agent_id) {
+      let externalAssignment = null;
+      if (external_agent_id) {
+        const publicAgentId = String(external_agent_id).trim().toUpperCase();
+        if (
+          !/^MPAG_[A-F0-9]{24}$/.test(publicAgentId) ||
+          !String(external_tenant_id || "").trim() ||
+          !String(external_merchant_id || "").trim() ||
+          !String(external_transaction_id || "").trim()
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "External routing requires valid agent, tenant, merchant and transaction identifiers",
+          });
+        }
+        externalAssignment = (
+          await pool.query(
+            `SELECT x.*, a.external_agent_id
+               FROM trustpay_external_merchant_assignments x
+               JOIN agents a ON a.id = x.agent_id
+              WHERE x.tenant_id = $1
+                AND x.external_merchant_id = $2
+                AND x.is_active = true
+                AND a.is_active = true
+                AND a.external_agent_id = $3
+              LIMIT 1`,
+            [String(external_tenant_id).trim(), String(external_merchant_id).trim(), publicAgentId],
+          )
+        ).rows[0] || null;
+        if (!externalAssignment) {
+          return res.status(403).json({
+            success: false,
+            message: "No active TrustPay assignment matches this tenant, merchant and external agent",
+          });
+        }
+      }
+      if (!externalAssignment && !merchant.agent_id) {
         return res
           .status(400)
           .json({
@@ -10447,11 +10803,24 @@ app.post(
           });
       }
 
-      const account = await findCandidateAgentAccount(pool, {
-        amount: numericAmount,
-        merchantId: Number(merchant.merchant_id),
-        requireAgentRestriction: true,
-      });
+      const account = externalAssignment
+        ? (
+            await pool.query(
+              `SELECT * FROM agent_accounts
+                WHERE agent_id = $1
+                  AND is_active = true
+                  AND COALESCE(min_transaction_amount, 0) <= $2
+                  AND (COALESCE(max_payment_limit, 0) = 0 OR max_payment_limit >= $2)
+                ORDER BY id
+                LIMIT 1`,
+              [externalAssignment.agent_id, numericAmount],
+            )
+          ).rows[0]
+        : await findCandidateAgentAccount(pool, {
+            amount: numericAmount,
+            merchantId: Number(merchant.merchant_id),
+            requireAgentRestriction: true,
+          });
 
       if (!account) {
         return res.status(400).json({
@@ -10474,7 +10843,8 @@ app.post(
           account_holder_name, upi_id, account_id, merchant_id,
           agent_id, created_by_admin_id, max_payment_limit, max_available_limit,
           min_transaction_amount, webhook_url, redirect_url, unique_id, approved_or_reject_date, status,
-  checkout_mode, expires_at, client_id
+  checkout_mode, expires_at, client_id, external_assignment_id,
+  external_tenant_id, external_merchant_id, external_transaction_id, external_payload
         )
         VALUES (
           $1,$2,$3,$4,$5,
@@ -10482,7 +10852,8 @@ app.post(
           $11,$12,$13,$14,
           $15,$16,$17,$18,
          $19,$20,$21,$22,$23,$24,
-  $25, NOW() + ($26 || ' seconds')::interval, $27
+  $25, NOW() + ($26 || ' seconds')::interval, $27, $28,
+  $29,$30,$31,$32
         )
         RETURNING *`,
           [
@@ -10508,7 +10879,7 @@ app.post(
             account.max_payment_limit || 0,
             account.max_available_limit || 0,
             account.min_transaction_amount || 0,
-            webhook_url || "",
+            externalAssignment?.webhook_url || webhook_url || "",
             redirect_url || "",
             merchant_order_id,
             null,
@@ -10516,6 +10887,11 @@ app.post(
             true,
             String(CHECKOUT_TTL_SECONDS),
             merchant.client_id || null,
+            externalAssignment?.id || null,
+            externalAssignment ? String(external_tenant_id).trim() : null,
+            externalAssignment ? String(external_merchant_id).trim() : null,
+            externalAssignment ? String(external_transaction_id).trim() : null,
+            externalAssignment ? req.body : null,
           ],
         );
 

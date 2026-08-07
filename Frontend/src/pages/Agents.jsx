@@ -965,8 +965,9 @@ function Agents() {
   }, []);
 
   const filteredAgents = useMemo(() => {
+    const term = search.toLowerCase();
     return agents.filter((agent) =>
-      (agent.name || "").toLowerCase().includes(search.toLowerCase())
+      `${agent.name || ""} ${agent.external_agent_id || ""}`.toLowerCase().includes(term)
     );
   }, [agents, search]);
 
@@ -1156,6 +1157,7 @@ function Agents() {
               <th className="px-6 py-5 text-base font-bold text-black">
                 Name
               </th>
+              <th className="px-6 py-5 text-base font-bold text-black">External Agent ID</th>
               <th className="px-6 py-5 text-base font-bold text-black">
                 Max Available Limit
               </th>
@@ -1187,6 +1189,13 @@ function Agents() {
 
                 <td className="px-6 py-5 text-base font-medium text-black">
                   {agent.name}
+                </td>
+
+                <td className="px-6 py-5 text-sm text-black">
+                  <div className="flex items-center gap-2">
+                    <code className="whitespace-nowrap rounded bg-slate-100 px-2 py-1 font-semibold">{agent.external_agent_id}</code>
+                    <button type="button" title="Copy External Agent ID" aria-label={`Copy ${agent.external_agent_id}`} onClick={() => copyText(agent.external_agent_id)} className="rounded-md border border-slate-200 p-2 text-blue-600 hover:bg-blue-50"><Copy size={16} /></button>
+                  </div>
                 </td>
 
                 <td className="px-6 py-5 text-base text-black">

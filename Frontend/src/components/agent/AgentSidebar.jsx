@@ -5,6 +5,7 @@ import {
   ReceiptText,
   FlaskConical,
   Wallet,
+  Store,
 } from "lucide-react";
 import Logo from "../Logo";
 import api from "../../api";
@@ -38,6 +39,7 @@ function AgentSidebar() {
         <SidebarTopLink to="/agent-dashboard" icon={LayoutDashboard}>
           Dashboard
         </SidebarTopLink>
+        <SidebarTopLink to="/agent/external-merchants" icon={Store}>Pay-In Requests</SidebarTopLink>
 
         {/* Wallet */}
         <SidebarSection icon={Wallet} title="Wallet" defaultOpen={true}>

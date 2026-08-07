@@ -22,9 +22,23 @@ const http = require("node:http");
 const crypto = require("node:crypto");
 const path = require("node:path");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const webhookSecurity = require("../lib/webhookSecurity");
-const pool = require("../db");
+const pool = require("../db"); // requiring this loads Backend/.env via dotenv, so process.env.JWT_SECRET is available below
+
+// Mints a real JWT the same shape as POST /api/login issues, so tests
+// exercise the actual authenticated path instead of the removed
+// header-trust fallback (see getAuthUser() in server.js).
+function signJwt(payload) {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+}
+function adminJwtFor(id) {
+  return signJwt({ userId: id, role: "admin", adminId: id, agentId: null, merchantId: null, superAdminId: null, clientId: null });
+}
+function agentJwtFor(id) {
+  return signJwt({ userId: id, role: "agent", agentId: id, merchantId: null, superAdminId: null, clientId: null });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Unit tests — pure functions, no DB, no server
@@ -114,7 +128,10 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
 
   let adminId;
   let agentAId;
-  const adminHeaders = () => ({ role: "admin", userid: String(adminId) });
+  // Real, backend-verified JWT — the header-based `{role, userid}` fallback
+  // this used to be is a closed authentication bypass (see the "SECURITY"
+  // tests below) and no longer authenticates anyone.
+  const adminHeaders = () => ({ Authorization: `Bearer ${adminJwtFor(adminId)}` });
 
   const fixtures = { agentIds: [], accountIds: [], merchantIds: [], withdrawalConfigIds: [], transactionIds: [], withdrawalTxnIds: [] };
   /** Merchant/withdrawal-config fixtures created in before(), read by every test. */
@@ -236,13 +253,11 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
       if (fixtures.accountIds.length) await pool.query(`DELETE FROM agent_accounts WHERE id = ANY($1::int[])`, [fixtures.accountIds]);
       if (fixtures.agentIds.length) await pool.query(`DELETE FROM agents WHERE id = ANY($1::int[])`, [fixtures.agentIds]);
     } finally {
-      if (serverProc) serverProc.kill();
+      if (serverProc && !serverProc.killed) serverProc.kill();
       // The timeout test deliberately never responds to one connection —
       // force it closed instead of waiting on graceful drain forever.
-      await new Promise((resolve) => {
-        receiverServer.close(resolve);
-        receiverServer.closeAllConnections();
-      });
+      receiverServer.closeAllConnections();
+      receiverServer.close();
       await pool.end();
     }
   });
@@ -364,7 +379,10 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
   });
 
   test("unauthorized roles cannot reveal or regenerate credentials", async () => {
-    const asAgent = { role: "agent", userid: "1" };
+    // A real, validly-signed JWT for a non-admin role — proves the role
+    // check itself (not just "no credentials"), now that role/userid are
+    // only ever sourced from a verified token.
+    const asAgent = { Authorization: `Bearer ${agentJwtFor(agentAId)}` };
     const reveal = await fetch(`${BASE}/api/admin/merchant-integrations/${fx.merchantA.id}/reveal`, {
       method: "POST",
       headers: { ...asAgent, "Content-Type": "application/json" },
@@ -378,6 +396,79 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
       body: JSON.stringify({ credential: "payin_key" }),
     });
     assert.equal(noAuth.status, 403);
+  });
+
+  // ── SECURITY: header-trust authentication bypass (fixed) ────────────────
+  // Regression coverage for the fix to getAuthUser() in server.js: unsigned
+  // role/userid/agentid/merchantid request headers must never be trusted as
+  // identity when no valid JWT is present. Before the fix, every one of these
+  // forged requests succeeded with real admin/super-admin privileges.
+  test("SECURITY: forged role/userid headers with no JWT are rejected on every sensitive merchant-integration route", async () => {
+    const forged = { role: "super-admin", userid: String(adminId) };
+
+    const list = await fetch(`${BASE}/api/admin/merchant-integrations`, { headers: forged });
+    assert.equal(list.status, 403);
+
+    const detail = await fetch(`${BASE}/api/admin/merchant-integrations/${fx.merchantA.id}`, { headers: forged });
+    assert.equal(detail.status, 403);
+
+    const reveal = await fetch(`${BASE}/api/admin/merchant-integrations/${fx.merchantA.id}/reveal`, {
+      method: "POST",
+      headers: { ...forged, "Content-Type": "application/json" },
+      body: JSON.stringify({ credential: "payin_key" }),
+    });
+    assert.equal(reveal.status, 403);
+    const revealBody = await reveal.json();
+    assert.notEqual(revealBody.value, fx.merchantA.api_key, "forged headers must never return the real credential");
+
+    const regen = await fetch(`${BASE}/api/admin/merchant-integrations/${fx.merchantA.id}/regenerate`, {
+      method: "POST",
+      headers: { ...forged, "Content-Type": "application/json" },
+      body: JSON.stringify({ credential: "payin_key", confirm: true }),
+    });
+    assert.equal(regen.status, 403);
+
+    const put = await fetch(`${BASE}/api/admin/merchant-integrations/${fx.merchantA.id}`, {
+      method: "PUT",
+      headers: { ...forged, "Content-Type": "application/json" },
+      body: JSON.stringify({ is_enabled: false }),
+    });
+    assert.equal(put.status, 403);
+
+    // The forged-header attempts above must not have actually rotated the key.
+    const stillWorks = await fetch(`${BASE}/api/payin/checkout/create`, {
+      method: "POST",
+      headers: { "x-api-key": fx.merchantA.api_key, "Content-Type": "application/json" },
+      body: JSON.stringify({ merchant_order_id: `ORD-${jitter()}`, amount: 10 }),
+    });
+    const stillWorksBody = await stillWorks.json();
+    assert.equal(stillWorks.status, 200);
+    fixtures.transactionIds.push(stillWorksBody.transaction_id);
+  });
+
+  test("SECURITY: an invalid/malformed JWT does not fall back to trusting accompanying headers", async () => {
+    const r = await fetch(`${BASE}/api/admin/merchant-integrations`, {
+      headers: { Authorization: "Bearer not-a-real-jwt.at.all", role: "admin", userid: String(adminId) },
+    });
+    assert.equal(r.status, 403);
+  });
+
+  test("SECURITY: a valid JWT for one role cannot be paired with forged headers to escalate", async () => {
+    // Valid agent JWT + forged admin headers riding along — role must come
+    // from the verified token only, headers must be fully ignored once a
+    // Bearer token is present.
+    const r = await fetch(`${BASE}/api/admin/merchant-integrations`, {
+      headers: { Authorization: `Bearer ${agentJwtFor(agentAId)}`, role: "admin", userid: String(adminId) },
+    });
+    assert.equal(r.status, 403);
+  });
+
+  test("valid admin JWT: works end-to-end for every merchant-integration admin route", async () => {
+    const list = await fetch(`${BASE}/api/admin/merchant-integrations`, { headers: adminHeaders() });
+    assert.equal(list.status, 200);
+
+    const detail = await fetch(`${BASE}/api/admin/merchant-integrations/${fx.merchantA.id}`, { headers: adminHeaders() });
+    assert.equal(detail.status, 200);
   });
 
   test("reveal returns the true full value for an authorized admin", async () => {
@@ -505,6 +596,8 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
     assert.equal(row.webhook_sent, true);
     assert.ok(row.webhook_delivered_at);
     assert.equal(row.webhook_attempts, 1);
+    assert.equal(row.webhook_delivery_id, delivery.headers["x-masterpay-delivery-id"], "the persisted audit row must record the exact delivery id that was sent");
+    assert.ok(row.webhook_response, "the response status/body must be retained for audit");
   });
 
   test("non-2xx webhook response is treated as failure and schedules a retry (not marked delivered)", async () => {
@@ -526,6 +619,9 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
     assert.equal(row.webhook_attempts, 1);
     assert.ok(row.webhook_next_retry_at, "a retry must be scheduled");
     assert.ok(row.webhook_last_error);
+    assert.ok(row.webhook_delivery_id, "a stable delivery id must be recorded even on failure, for audit and future retry matching");
+    assert.ok(row.webhook_response, "the failing response status/body must be retained for audit, not discarded");
+    assert.ok(row.webhook_last_attempt_at, "the attempt timestamp must be recorded");
 
     // The real backoff after attempt 1 is a full minute (by design — see
     // webhookSecurity.computeBackoffSeconds) — not something a test should
@@ -672,5 +768,80 @@ describe("TrustPay merchant-integration (HTTP, real DB)", { concurrency: false }
     assert.equal(pageBody.success, true);
     assert.equal(pageBody.transaction_ref, created.transaction_ref);
     assert.ok(pageBody.bank_details);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECURITY — ALLOW_DEV_HEADER_AUTH flag semantics
+//
+// The main suite above never sets ALLOW_DEV_HEADER_AUTH, proving the default
+// (unset/false) rejects forged headers. These three tests spin up dedicated,
+// short-lived server instances (separate ports) to independently prove the
+// flag's full contract: off by default, opt-in outside production, and
+// hard-blocked in production regardless of the flag value.
+// ═══════════════════════════════════════════════════════════════════════════
+describe("SECURITY: ALLOW_DEV_HEADER_AUTH dev-only flag", { concurrency: false }, () => {
+  async function waitReady(url, tries = 80, delayMs = 250) {
+    for (let i = 0; i < tries; i++) {
+      try {
+        const r = await fetch(url);
+        if (r.ok || r.status === 404) return true;
+      } catch { /* not up yet */ }
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    throw new Error(`Server at ${url} did not become ready in time`);
+  }
+
+  async function spawnServerWith(port, envOverrides) {
+    const proc = spawn(process.execPath, ["server.js"], {
+      cwd: BACKEND_DIR,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        DISABLE_BACKGROUND_JOBS: "true",
+        MERCHANT_INTEGRATION_CONFIG_ENABLED: "true",
+        ...envOverrides,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    proc.stdout.on("data", () => {});
+    proc.stderr.on("data", () => {});
+    await waitReady(`http://127.0.0.1:${port}/`);
+    return proc;
+  }
+
+  const forgedHeaders = () => ({ role: "super-admin", userid: "1" });
+
+  test("flag unset (default) outside production: forged headers still rejected", async () => {
+    const port = 48770;
+    const proc = await spawnServerWith(port, { NODE_ENV: "development" });
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/api/admin/merchant-integrations`, { headers: forgedHeaders() });
+      assert.equal(r.status, 403);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("flag explicitly true outside production: header fallback is trusted (opt-in local/test convenience only)", async () => {
+    const port = 48771;
+    const proc = await spawnServerWith(port, { NODE_ENV: "development", ALLOW_DEV_HEADER_AUTH: "true" });
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/api/admin/merchant-integrations`, { headers: forgedHeaders() });
+      assert.equal(r.status, 200);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("flag explicitly true in production: still hard-blocked — NODE_ENV=production always wins", async () => {
+    const port = 48772;
+    const proc = await spawnServerWith(port, { NODE_ENV: "production", ALLOW_DEV_HEADER_AUTH: "true" });
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/api/admin/merchant-integrations`, { headers: forgedHeaders() });
+      assert.equal(r.status, 403);
+    } finally {
+      proc.kill();
+    }
   });
 });

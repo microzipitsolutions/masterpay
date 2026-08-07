@@ -36,6 +36,7 @@ import AgentDashboard from "./pages/agent/AgentDashboard";
 import AgentAccounts from "./pages/agent/Accounts";
 import AgentSettlementAccounts from "./pages/agent/SettlementAccounts";
 import AgentTransactions from "./pages/agent/Transactions";
+import AgentExternalMerchants from "./pages/agent/ExternalMerchants";
 import AgentCreateSettlement from "./pages/agent/CreateSettlement";
 import AgentSettlementTransactions from "./pages/agent/SettlementTransactions";
 import TransactionPaymentProof from "./pages/agent/TransactionPaymentProof";
@@ -443,6 +444,7 @@ function App() {
           </ProtectedUserRoute>
         }
       />
+      <Route path="/agent/external-merchants" element={<ProtectedUserRoute allowedRoles={["agent"]}><AgentExternalMerchants /></ProtectedUserRoute>} />
 
       <Route
         path="/agent/settlement-transactions"
