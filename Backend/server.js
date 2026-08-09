@@ -276,7 +276,8 @@ function getAuthUser(req) {
 }
 
 function getAdminOwnerId(auth) {
-  return auth?.role === "admin" ? Number(auth.userId) : null;
+  if (auth?.role === "admin") return Number(auth.userId);
+  return auth?.originalRole === "admin" ? Number(auth.originalUserId) : null;
 }
 
 // Returns client_id for data isolation. Super-admin sees all (null = no filter).
@@ -3800,6 +3801,7 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
     const payinCommissionFilter = buildIstDateFilter(payinCommissionValues, startDate, endDate, "t.created_at");
     const payoutCommissionValues = [];
     const payoutCommissionFilter = buildIstDateFilter(payoutCommissionValues, startDate, endDate, "wt.created_at");
+    const pendingSettlementValues = [];
 
     // Optional client_id filter (the one "advanced filter" wired end-to-end
     // from FiltersBar). transactions/settlement_transactions/
@@ -3817,9 +3819,10 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
       clientWdClause = ` AND m.client_id = $${wdValues.length}`;
       payoutCommissionValues.push(clientId);
       clientPayoutCommClause = ` AND m.client_id = $${payoutCommissionValues.length}`;
+      pendingSettlementValues.push(clientId);
     }
 
-    const [payinResult, wdResult, stResult, topupResult, payinCommissionResult, payoutCommissionResult] =
+    const [payinResult, wdResult, stResult, pendingSettlementResult, topupResult, payinCommissionResult, payoutCommissionResult] =
       await Promise.all([
         pool.query(
           `SELECT
@@ -3838,10 +3841,15 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
         ),
         pool.query(
           `SELECT
-             COUNT(CASE WHEN transaction_status='Pending' THEN 1 END) AS pending_settlements_count,
              COALESCE(SUM(CASE WHEN transaction_status='Approved' THEN amount ELSE 0 END),0) AS settlements_approved
            FROM settlement_transactions WHERE true${stFilter}${clientStClause}`,
           stValues,
+        ),
+        pool.query(
+          `SELECT COUNT(*) AS pending_settlements_count
+           FROM settlement_transactions
+           WHERE transaction_status='Pending'${clientId ? " AND client_id = $1" : ""}`,
+          pendingSettlementValues,
         ),
         pool.query(
           `SELECT COALESCE(SUM(CASE WHEN status='Approved' THEN amount ELSE 0 END),0) AS approved_topups
@@ -3882,7 +3890,7 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
     return {
       payin_received: payinReceived,
       withdrawals_sent: withdrawalsSent,
-      pending_settlements_count: Number(stResult.rows[0].pending_settlements_count),
+      pending_settlements_count: Number(pendingSettlementResult.rows[0].pending_settlements_count),
       approved_topups: Number(topupResult.rows[0].approved_topups),
       total_commission_earned: totalCommissionEarned,
       // Pure cash movement — kept separate from Total Commission Earned so nothing
@@ -9166,6 +9174,8 @@ app.post(
 app.get("/api/admin-dashboard", async (req, res) => {
   try {
     const auth = getAuthUser(req);
+    if ((auth.originalRole || auth.role) !== "admin")
+      return res.status(403).json({ message: "Admin authentication required" });
     const adminId = getAdminOwnerId(auth);
     const { startDate, endDate, viewAgentId, merchantId } = req.query;
     const selectedAgentId = viewAgentId ? Number(viewAgentId) : null;
@@ -9181,19 +9191,13 @@ app.get("/api/admin-dashboard", async (req, res) => {
       totalMerchantCommission: 0,
       payinAmountByAgent: 0,
       payinAmountByMerchant: 0,
-      payinAmountByAgent: 0,
-      payinAmountByMerchant: 0,
       totalPayinAmount: 0,
       payinTransactionsByAgent: 0,
       payinTransactionsByMerchant: 0,
-      payinTransactionsByAgent: 0,
-      payinTransactionsByMerchant: 0,
       totalPayinTransactions: 0,
-      settlementAmountByAgent: 0,
       settlementAmountByMerchant: 0,
       settlementAmountByAgent: 0,
       totalSettlementAmount: 0,
-      settlementTransactionsByAgent: 0,
       settlementTransactionsByMerchant: 0,
       settlementTransactionsByAgent: 0,
       totalSettlementTransactions: 0,
@@ -9241,7 +9245,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const payinSummary = await pool.query(
       `SELECT
          COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
-         COUNT(CASE WHEN t.status = 'Approved' THEN 1 END) AS total_payin_transactions,
+         COUNT(t.id) AS total_payin_transactions,
          COUNT(CASE WHEN t.status IN ('Approved','Success') THEN 1 END) AS approved_count,
          COUNT(CASE WHEN t.status IN ('Approved','Success','Failed','Rejected','Expired') THEN 1 END) AS finalized_count
        FROM transactions t
@@ -9258,7 +9262,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const settlementSummary = await pool.query(
       `SELECT
          COALESCE(SUM(CASE WHEN st.transaction_status = 'Approved' THEN st.amount ELSE 0 END), 0) AS total_settlement_amount,
-         COUNT(CASE WHEN st.transaction_status = 'Approved' THEN 1 END) AS total_settlement_transactions
+         COUNT(st.id) AS total_settlement_transactions
        FROM settlement_transactions st
        WHERE st.created_by_admin_id = $1 ${settlementAgentFilter} ${settlementMerchantFilter} ${settlementDate}`,
       settlementValues,
@@ -9314,7 +9318,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const agentCommDate = addDateFilter("t", agentValues);
 
     const agentCommission = await pool.query(
-      `SELECT a.id, a.name, COALESCE(SUM(COALESCE(t.agent_commission_amount, t.amount * (a.commission_percent / 100.0))), 0) AS amount
+      `SELECT a.id, a.name, COALESCE(SUM(t.amount * (a.commission_percent / 100.0)), 0) AS amount
        FROM agents a
        LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${agentMerchantJoin} ${agentCommDate}
        WHERE a.created_by_admin_id = $1 ${agentFilter}
@@ -9325,9 +9329,10 @@ app.get("/api/admin-dashboard", async (req, res) => {
     // ── Commission by merchant ──
     const merchantValues = [adminId];
     let merchantFilter = "";
+    let merchantAgentJoin = "";
     if (selectedAgentId) {
       merchantValues.push(selectedAgentId);
-      merchantFilter += ` AND m.agent_id = $${merchantValues.length}`;
+      merchantAgentJoin = ` AND t.agent_id = $${merchantValues.length}`;
     }
     if (selectedMerchantId) {
       merchantValues.push(selectedMerchantId);
@@ -9338,7 +9343,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const merchantCommission = await pool.query(
       `SELECT m.id, m.name, COALESCE(SUM(t.amount * (m.commission_percent / 100.0)), 0) AS amount
        FROM merchants m
-       LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status = 'Approved' ${merchantCommDate}
+       LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status = 'Approved' ${merchantAgentJoin} ${merchantCommDate}
        WHERE m.created_by_admin_id = $1 ${merchantFilter}
        GROUP BY m.id, m.name ORDER BY amount DESC`,
       merchantValues,
@@ -9393,7 +9398,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
     // Settlement Remaining = (payin - settled) - payin commission - payout commission
     // - cleared payouts. This is what is still owed to merchants, net of both fees.
     const settlementRemaining =
-      grossSettlementRemaining - adminCommission - payoutCommission - totalWithdrawal;
+      grossSettlementRemaining - totalMerchantCommission - payoutCommission - totalWithdrawal;
 
     const approvedCount = Number(payinSummary.rows[0]?.approved_count || 0);
     const finalizedCount = Number(payinSummary.rows[0]?.finalized_count || 0);
@@ -9436,9 +9441,9 @@ app.get("/api/admin-dashboard", async (req, res) => {
       totalSettlementTransactions: Number(
         settlementSummary.rows[0]?.total_settlement_transactions || 0,
       ),
-      // Payin success rate reflects successful payins only — 100% when there are any
-      // approved/successful payins, otherwise 0.
-      successRate: approvedCount > 0 ? 100 : 0,
+      successRate: finalizedCount > 0
+        ? Math.round((approvedCount / finalizedCount) * 10000) / 100
+        : 0,
     });
   } catch (error) {
     console.log("Admin dashboard error:", error);
@@ -9453,9 +9458,12 @@ app.get("/api/admin-dashboard", async (req, res) => {
 app.get("/api/admin-dashboard/details", async (req, res) => {
   try {
     const auth = getAuthUser(req);
+    if ((auth.originalRole || auth.role) !== "admin")
+      return res.status(403).json({ message: "Admin authentication required" });
     const adminId = getAdminOwnerId(auth);
-    const { type, viewAgentId, startDate, endDate } = req.query;
+    const { type, viewAgentId, merchantId, startDate, endDate } = req.query;
     const selectedAgentId = viewAgentId ? Number(viewAgentId) : null;
+    const selectedMerchantId = merchantId ? Number(merchantId) : null;
 
     if (!adminId) return res.json([]);
 
@@ -9466,7 +9474,10 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
     if (selectedAgentId) {
       values.push(selectedAgentId);
       agentFilter += ` AND a.id = $${values.length}`;
-      merchantFilter += ` AND m.agent_id = $${values.length}`;
+    }
+    if (selectedMerchantId) {
+      values.push(selectedMerchantId);
+      merchantFilter += ` AND m.id = $${values.length}`;
     }
 
     // Same IST-day date-filter pattern as /api/admin-dashboard's addDateFilter.
@@ -9496,9 +9507,9 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
         const dateFilter = addDateFilter("t", vals);
         result = await pool.query(
           `SELECT a.id, a.name,
-             COALESCE(SUM(COALESCE(t.agent_commission_amount, t.amount * (a.commission_percent / 100.0))), 0) AS amount
+             COALESCE(SUM(t.amount * (a.commission_percent / 100.0)), 0) AS amount
            FROM agents a
-           LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${dateFilter}
+           LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${selectedMerchantId ? `AND t.merchant_id = $${values.length}` : ""} ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY amount DESC`,
           vals,
         );
@@ -9512,7 +9523,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
           `SELECT m.id, m.name,
              COALESCE(SUM(t.amount * (m.commission_percent / 100.0)), 0) AS amount
            FROM merchants m
-           LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status = 'Approved' ${dateFilter}
+           LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status = 'Approved' ${selectedAgentId ? "AND t.agent_id = $2" : ""} ${dateFilter}
            WHERE ${merchantFilter} GROUP BY m.id, m.name ORDER BY amount DESC`,
           vals,
         );
@@ -9527,7 +9538,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
           `SELECT a.id, a.name,
              COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS amount
            FROM agents a
-           LEFT JOIN transactions t ON t.agent_id = a.id ${dateFilter}
+           LEFT JOIN transactions t ON t.agent_id = a.id ${selectedMerchantId ? `AND t.merchant_id = $${values.length}` : ""} ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY amount DESC`,
           vals,
         );
@@ -9541,7 +9552,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
           `SELECT m.id, m.name,
              COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS amount
            FROM merchants m
-           LEFT JOIN transactions t ON t.merchant_id = m.id ${dateFilter}
+           LEFT JOIN transactions t ON t.merchant_id = m.id ${selectedAgentId ? "AND t.agent_id = $2" : ""} ${dateFilter}
            WHERE ${merchantFilter} GROUP BY m.id, m.name ORDER BY amount DESC`,
           vals,
         );
@@ -9559,7 +9570,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
              COUNT(CASE WHEN t.status = 'Rejected' THEN 1 END) AS rejected,
              COUNT(t.id) AS totaltransactions
            FROM agents a
-           LEFT JOIN transactions t ON t.agent_id = a.id ${dateFilter}
+           LEFT JOIN transactions t ON t.agent_id = a.id ${selectedMerchantId ? `AND t.merchant_id = $${values.length}` : ""} ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY totaltransactions DESC`,
           vals,
         );
@@ -9576,7 +9587,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
              COUNT(CASE WHEN t.status = 'Rejected' THEN 1 END) AS rejected,
              COUNT(t.id) AS totaltransactions
            FROM merchants m
-           LEFT JOIN transactions t ON t.merchant_id = m.id ${dateFilter}
+           LEFT JOIN transactions t ON t.merchant_id = m.id ${selectedAgentId ? "AND t.agent_id = $2" : ""} ${dateFilter}
            WHERE ${merchantFilter} GROUP BY m.id, m.name ORDER BY totaltransactions DESC`,
           vals,
         );
@@ -9593,7 +9604,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
              COUNT(CASE WHEN status = 'Rejected' THEN 1 END) AS rejected,
              COUNT(*) AS totaltransactions
            FROM transactions
-           WHERE created_by_admin_id = $1 ${selectedAgentId ? "AND agent_id = $2" : ""} ${dateFilter}`,
+           WHERE created_by_admin_id = $1 ${selectedAgentId ? `AND agent_id = $2` : ""} ${selectedMerchantId ? `AND merchant_id = $${values.length}` : ""} ${dateFilter}`,
           vals,
         );
         break;
@@ -9607,7 +9618,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
           `SELECT a.id, a.name,
              COALESCE(SUM(CASE WHEN st.transaction_status = 'Approved' THEN st.amount ELSE 0 END), 0) AS amount
            FROM agents a
-           LEFT JOIN settlement_transactions st ON st.agent_id = a.id ${dateFilter}
+           LEFT JOIN settlement_transactions st ON st.agent_id = a.id ${selectedMerchantId ? `AND st.merchant_id = $${values.length}` : ""} ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY amount DESC`,
           vals,
         );
@@ -9621,7 +9632,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
           `SELECT m.id, m.name,
              COALESCE(SUM(CASE WHEN st.transaction_status = 'Approved' THEN st.amount ELSE 0 END), 0) AS amount
            FROM merchants m
-           LEFT JOIN settlement_transactions st ON st.merchant_id = m.id ${dateFilter}
+           LEFT JOIN settlement_transactions st ON st.merchant_id = m.id ${selectedAgentId ? "AND st.agent_id = $2" : ""} ${dateFilter}
            WHERE ${merchantFilter} GROUP BY m.id, m.name ORDER BY amount DESC`,
           vals,
         );
@@ -9639,7 +9650,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
              COUNT(CASE WHEN st.transaction_status = 'Rejected' THEN 1 END) AS rejected,
              COUNT(st.id) AS totaltransactions
            FROM agents a
-           LEFT JOIN settlement_transactions st ON st.agent_id = a.id ${dateFilter}
+           LEFT JOIN settlement_transactions st ON st.agent_id = a.id ${selectedMerchantId ? `AND st.merchant_id = $${values.length}` : ""} ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY totaltransactions DESC`,
           vals,
         );
@@ -9656,7 +9667,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
              COUNT(CASE WHEN st.transaction_status = 'Rejected' THEN 1 END) AS rejected,
              COUNT(st.id) AS totaltransactions
            FROM merchants m
-           LEFT JOIN settlement_transactions st ON st.merchant_id = m.id ${dateFilter}
+           LEFT JOIN settlement_transactions st ON st.merchant_id = m.id ${selectedAgentId ? "AND st.agent_id = $2" : ""} ${dateFilter}
            WHERE ${merchantFilter} GROUP BY m.id, m.name ORDER BY totaltransactions DESC`,
           vals,
         );
@@ -9673,7 +9684,7 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
              COUNT(CASE WHEN transaction_status = 'Rejected' THEN 1 END) AS rejected,
              COUNT(*) AS totaltransactions
            FROM settlement_transactions
-           WHERE created_by_admin_id = $1 ${selectedAgentId ? "AND agent_id = $2" : ""} ${dateFilter}`,
+           WHERE created_by_admin_id = $1 ${selectedAgentId ? "AND agent_id = $2" : ""} ${selectedMerchantId ? `AND merchant_id = $${values.length}` : ""} ${dateFilter}`,
           vals,
         );
         break;
@@ -9718,6 +9729,8 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
 app.get("/api/merchant-dashboard", async (req, res) => {
   try {
     const auth = getAuthUser(req);
+    if (auth.role !== "merchant")
+      return res.status(403).json({ message: "Merchant authentication required" });
     const merchantId = Number(auth.merchantId || auth.userId);
     const { startDate, endDate } = req.query;
 
@@ -9760,6 +9773,7 @@ app.get("/api/merchant-dashboard", async (req, res) => {
          COUNT(CASE WHEN t.status = 'Approved' THEN 1 END) AS approved,
          COUNT(CASE WHEN t.status IN ('Pending','UTR Submitted') THEN 1 END) AS pending,
          COUNT(CASE WHEN t.status = 'Rejected' THEN 1 END) AS rejected
+         ,COUNT(CASE WHEN t.status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized
        FROM transactions t
        WHERE t.merchant_id = $1 ${transactionDateFilter}`,
       values,
@@ -9775,23 +9789,8 @@ app.get("/api/merchant-dashboard", async (req, res) => {
       `SELECT COALESCE(SUM(wt.amount), 0) AS total_withdrawal_amount
    FROM withdrawal_transactions wt
    WHERE wt.merchant_id = $1
-     AND LOWER(wt.status) IN ('approved', 'cleared')
+     AND LOWER(wt.status) = 'cleared'
      ${withdrawalDateFilter}`,
-      values,
-    );
-
-    // Agent commission on this merchant's approved payins — mirrors admin dashboard's
-    // agentCommission query scoped to a single merchant. LEFT JOIN (not INNER) so
-    // merchants with no assigned agent (transactions.agent_id IS NULL) still show
-    // up in this query instead of being silently excluded. Prefers the commission
-    // snapshot frozen on the transaction at approval time (see the
-    // agent_commission_amount trigger below); falls back to a live calc only for
-    // rows that predate that snapshot or have no agent.
-    const agentCommissionResult = await pool.query(
-      `SELECT COALESCE(SUM(COALESCE(t.agent_commission_amount, t.amount * (COALESCE(a.commission_percent, 0) / 100.0))), 0) AS agent_commission
-       FROM transactions t
-       LEFT JOIN agents a ON a.id = t.agent_id
-       WHERE t.merchant_id = $1 AND t.status = 'Approved' ${transactionDateFilter}`,
       values,
     );
 
@@ -9829,9 +9828,6 @@ app.get("/api/merchant-dashboard", async (req, res) => {
     const totalCommissionAmount =
       totalPayinAmount * (Number(merchant?.commission_percent || 0) / 100);
 
-    const agentCommissionAmount = Number(
-      agentCommissionResult.rows[0]?.agent_commission || 0,
-    );
     const payoutCommissionAmount = Number(
       payoutCommissionResult.rows[0]?.payout_commission || 0,
     );
@@ -9839,14 +9835,13 @@ app.get("/api/merchant-dashboard", async (req, res) => {
       clearedWithdrawalResult.rows[0]?.cleared_withdrawal || 0,
     );
 
-    // Net platform commission = merchant commission minus agent's share.
-    // This mirrors admin dashboard: adminCommission = totalMerchantCommission - totalAgentCommission.
-    const netCommission = totalCommissionAmount - agentCommissionAmount;
-
-    // Outstanding = (payin - settled) - netCommission - payoutCommission - clearedWithdrawals.
-    // Identical formula to admin's settlementRemaining, scoped to this merchant.
+    // Merchant liability is reduced by the full fee charged to the Merchant.
+    // Agent commission is an internal split of that fee, not money still owed
+    // back to the Merchant, so adding it back would overstate outstanding.
     const totalOutstandingAmount =
-      (totalPayinAmount - totalSettlementAmount) - netCommission - payoutCommissionAmount - clearedWithdrawalAmount;
+      (totalPayinAmount - totalSettlementAmount) - totalCommissionAmount - payoutCommissionAmount - clearedWithdrawalAmount;
+
+    const finalizedTransactions = Number(payinSummary.rows[0]?.finalized || 0);
 
     res.json({
       totalOutstandingAmount,
@@ -9858,7 +9853,11 @@ app.get("/api/merchant-dashboard", async (req, res) => {
       approved: approvedTransactions,
       pending: Number(payinSummary.rows[0]?.pending || 0),
       rejected: Number(payinSummary.rows[0]?.rejected || 0),
-      successRate: approvedTransactions > 0 ? 100 : 0,
+      payinAmountByMerchant: totalPayinAmount,
+      payinTransactionsByMerchant: totalPayinTransactions,
+      successRate: finalizedTransactions > 0
+        ? Math.round((approvedTransactions / finalizedTransactions) * 10000) / 100
+        : 0,
     });
   } catch (error) {
     console.log("Merchant dashboard error:", error);
@@ -9869,6 +9868,8 @@ app.get("/api/merchant-dashboard", async (req, res) => {
 app.get("/api/merchant-dashboard/details", async (req, res) => {
   try {
     const auth = getAuthUser(req);
+    if (auth.role !== "merchant")
+      return res.status(403).json({ message: "Merchant authentication required" });
     const merchantId = Number(auth.merchantId || auth.userId);
     const { type, startDate, endDate } = req.query;
 
@@ -9926,6 +9927,8 @@ app.get("/api/merchant-dashboard/details", async (req, res) => {
 app.get("/api/agent-dashboard", async (req, res) => {
   try {
     const auth = getAuthUser(req);
+    if (auth.role !== "agent")
+      return res.status(403).json({ message: "Agent authentication required" });
     const agentId = Number(auth.agentId || auth.agent_id || auth.userId);
     const { startDate, endDate } = req.query;
 
@@ -9964,7 +9967,8 @@ app.get("/api/agent-dashboard", async (req, res) => {
          COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
          COUNT(CASE WHEN t.status = 'Approved' THEN 1 END) AS total_payin_transactions,
          COUNT(t.id) AS total_transactions,
-         COUNT(CASE WHEN t.status = 'UTR Submitted' THEN 1 END) AS pending_verifications
+         COUNT(CASE WHEN t.status = 'UTR Submitted' THEN 1 END) AS pending_verifications,
+         COUNT(CASE WHEN t.status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized_transactions
        FROM transactions t
        WHERE t.agent_id = $1 ${dateFilter}`,
       values,
@@ -9974,7 +9978,7 @@ app.get("/api/agent-dashboard", async (req, res) => {
       `SELECT COALESCE(SUM(wt.amount), 0) AS total_withdrawal_amount
        FROM withdrawal_transactions wt
        WHERE wt.agent_id = $1
-         AND LOWER(wt.status) IN ('cleared', 'approved')
+         AND LOWER(wt.status) = 'cleared'
          ${withdrawalDateFilter}`,
       values,
     );
@@ -9995,7 +9999,9 @@ app.get("/api/agent-dashboard", async (req, res) => {
       [agentId],
     );
     const ledgerSumResult = await pool.query(
-      `SELECT COALESCE(SUM(amount), 0) AS settlement_amount FROM agent_wallet_ledger WHERE agent_id = $1 AND entry_type = 'TOPUP_CREDIT'`,
+      `SELECT COALESCE(-SUM(amount), 0) AS settlement_amount
+       FROM agent_wallet_ledger
+       WHERE agent_id = $1 AND entry_type IN ('PAYIN_DEBIT','PAYIN_REFUND','PAYIN_REDEBIT')`,
       [agentId],
     );
 
@@ -10003,8 +10009,9 @@ app.get("/api/agent-dashboard", async (req, res) => {
     const totalPayinAmount = Number(row.total_payin_amount || 0);
     const totalPayinTransactions = Number(row.total_payin_transactions || 0);
     const totalTransactions = Number(row.total_transactions || 0);
-    const totalCommissionAmount =
-      totalPayinAmount * (Number(agent.commission_percent || 0) / 100);
+    const totalCommissionAmount = Math.round(
+      totalPayinAmount * Number(agent.commission_percent || 0),
+    ) / 100;
     const totalWithdrawalAmount = Number(
       withdrawalSummaryResult.rows[0]?.total_withdrawal_amount || 0,
     );
@@ -10012,14 +10019,25 @@ app.get("/api/agent-dashboard", async (req, res) => {
       settlementSummaryResult.rows[0]?.total_settlement_amount || 0,
     );
     const walletBalance = Number(walletResult.rows[0]?.available_balance || 0);
+    const finalizedTransactions = Number(row.finalized_transactions || 0);
+    const successRate = finalizedTransactions > 0
+      ? Math.round((totalPayinTransactions / finalizedTransactions) * 10000) / 100
+      : 0;
+    const totalOutstandingAmount = totalCommissionAmount - totalSettlementAmount;
 
     res.json({
       totalPayinAmount,
-      totalPayinTransactions,
+      totalPayinTransactions: totalTransactions,
+      successfulPayinTransactions: totalPayinTransactions,
       totalTransactions,
       totalCommissionAmount,
-      totalOutstandingAmount: totalCommissionAmount,
-      successRate: totalPayinTransactions > 0 ? 100 : 0,
+      totalOutstandingAmount,
+      payinAmountByAgent: totalPayinAmount,
+      payinTransactionsByAgent: totalTransactions,
+      agents: [{ id: agent.id, name: agent.name, amount: totalPayinAmount, transactions: totalTransactions }],
+      withdrawalAgents: [{ id: agent.id, name: agent.name, amount: totalWithdrawalAmount }],
+      settlementAgents: [{ id: agent.id, name: agent.name, amount: totalSettlementAmount }],
+      successRate,
       pendingVerifications: Number(row.pending_verifications || 0),
       totalWithdrawalAmount,
       totalSettlementAmount,

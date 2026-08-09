@@ -243,7 +243,7 @@ function MerchantDashboard() {
 
     {
       title: "Success Rate",
-      value: stats.successRate,
+      value: `${Number(stats.successRate || 0)}%`,
       localDetails: { successRate: stats.successRate },
     },
   ];

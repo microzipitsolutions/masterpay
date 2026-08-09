@@ -138,17 +138,15 @@ const money = (value) => {
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
     if (viewAgentId) params.viewAgentId = viewAgentId;
+    if (merchantId) params.merchantId = merchantId;
 
     return params;
   };
 
   const detailsUrl = (type) => {
     const params = buildParams();
-    return `/api/admin-dashboard/details?type=${type}${
-      params.viewAgentId ? `&viewAgentId=${params.viewAgentId}` : ""
-    }${params.startDate ? `&startDate=${params.startDate}` : ""}${
-      params.endDate ? `&endDate=${params.endDate}` : ""
-    }`;
+    const query = new URLSearchParams({ type, ...params });
+    return `/api/admin-dashboard/details?${query.toString()}`;
   };
 
   const fetchDashboard = async () => {
