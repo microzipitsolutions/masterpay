@@ -535,7 +535,7 @@ async function findCandidateAgentAccount(dbClient, { amount, merchantId, require
        SELECT agent_id, COALESCE(SUM(amount),0) AS agent_committed
        FROM transactions
        WHERE agent_id IS NOT NULL
-         AND status IN ('Approved','Success','Pending','UTR Submitted')
+         AND status IN ('Approved','Success')
        GROUP BY agent_id
      ) ap ON ap.agent_id = oa.agent_id
      LEFT JOIN (
@@ -549,7 +549,7 @@ async function findCandidateAgentAccount(dbClient, { amount, merchantId, require
        AND (COALESCE(t.committed_today, 0) + $1) <= COALESCE(oa.max_payment_limit, 0)
        AND (
          COALESCE(ag.max_payment_limit, 0) <= 0
-         OR (COALESCE(ap.agent_committed, 0) - COALESCE(asl.agent_settled, 0) + $1) <= ag.max_payment_limit
+         OR (GREATEST(COALESCE(ap.agent_committed, 0) - COALESCE(asl.agent_settled, 0), 0) + $1) <= ag.max_payment_limit
        )
        AND ${merchantClause}
      ORDER BY RANDOM() LIMIT 1`,
@@ -5008,15 +5008,25 @@ app.get("/api/agents", async (req, res) => {
     const result = await pool.query(
       `SELECT a.id, a.external_agent_id, a.name, a.commission_percent, a.max_available_limit, a.max_payment_limit,
               a.min_transaction_amount, a.username, a.plain_password, a.is_active, a.created_at,
-              (COALESCE(ap.agent_committed, 0) - COALESCE(asl.agent_settled, 0)) AS outstanding_amount
+              GREATEST(COALESCE(ap.approved_collected, 0) - COALESCE(asl.agent_settled, 0), 0) AS outstanding_amount,
+              COALESCE(ip.in_flight_amount, 0) AS in_flight_amount,
+              CASE WHEN COALESCE(a.max_payment_limit, 0) <= 0 THEN NULL
+                   ELSE GREATEST(a.max_payment_limit - GREATEST(COALESCE(ap.approved_collected, 0) - COALESCE(asl.agent_settled, 0), 0), 0)
+              END AS available_payment_limit
        FROM agents a
        LEFT JOIN (
-         SELECT agent_id, COALESCE(SUM(amount),0) AS agent_committed
+         SELECT agent_id, COALESCE(SUM(amount),0) AS approved_collected
          FROM transactions
          WHERE agent_id IS NOT NULL
-           AND status IN ('Approved','Success','Pending','UTR Submitted')
+           AND status IN ('Approved','Success')
          GROUP BY agent_id
        ) ap ON ap.agent_id = a.id
+       LEFT JOIN (
+         SELECT agent_id, COALESCE(SUM(amount),0) AS in_flight_amount
+         FROM transactions
+         WHERE agent_id IS NOT NULL AND status IN ('Pending','UTR Submitted')
+         GROUP BY agent_id
+       ) ip ON ip.agent_id = a.id
        LEFT JOIN (
          SELECT agent_id, COALESCE(SUM(amount),0) AS agent_settled
          FROM settlement_transactions
@@ -7948,16 +7958,8 @@ app.post("/api/payins", async (req, res) => {
         ],
       );
 
-      if (isWalletGateEnabled()) {
-        // Informational debit only — never blocks Pay-In creation. See
-        // debitAgentWalletForPayin: it cannot return ok:false for
-        // insufficient balance anymore, so there is no failure branch here.
-        await debitAgentWalletForPayin(client, {
-          agentId: account.agent_id,
-          amount: numericAmount,
-          transactionId: result.rows[0].id,
-        });
-      }
+      // Pending is a routing reservation only. Financial totals and wallet
+      // funding are not mutated until/unless the Pay-In is confirmed.
 
       await client.query("COMMIT");
     } catch (txErr) {
@@ -9964,9 +9966,11 @@ app.get("/api/agent-dashboard", async (req, res) => {
 
     const summaryResult = await pool.query(
       `SELECT
-         COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
-         COUNT(CASE WHEN t.status = 'Approved' THEN 1 END) AS total_payin_transactions,
+         COALESCE(SUM(CASE WHEN t.status IN ('Approved','Success') THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
+         COUNT(CASE WHEN t.status IN ('Approved','Success') THEN 1 END) AS total_payin_transactions,
          COUNT(t.id) AS total_transactions,
+         COALESCE(SUM(CASE WHEN t.status IN ('Pending','UTR Submitted') THEN t.amount ELSE 0 END), 0) AS pending_payin_amount,
+         COUNT(CASE WHEN t.status IN ('Pending','UTR Submitted') THEN 1 END) AS pending_payin_transactions,
          COUNT(CASE WHEN t.status = 'UTR Submitted' THEN 1 END) AS pending_verifications,
          COUNT(CASE WHEN t.status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized_transactions
        FROM transactions t
@@ -9992,16 +9996,12 @@ app.get("/api/agent-dashboard", async (req, res) => {
       values,
     );
 
-    // Wallet balance — folded in from the old Agent dashboard (Agent's
-    // wallet/top-up system is now the Agent's own, see agent_wallets).
-    const walletResult = await pool.query(
-      `SELECT available_balance FROM agent_wallets WHERE agent_id = $1`,
-      [agentId],
-    );
-    const ledgerSumResult = await pool.query(
-      `SELECT COALESCE(-SUM(amount), 0) AS settlement_amount
+    // Top-ups are funding, not settlements. This ledger source is deliberately
+    // separate from Pay-Ins and settlement_transactions.
+    const topupResult = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) AS total_topup_amount
        FROM agent_wallet_ledger
-       WHERE agent_id = $1 AND entry_type IN ('PAYIN_DEBIT','PAYIN_REFUND','PAYIN_REDEBIT')`,
+       WHERE agent_id = $1 AND entry_type = 'TOPUP_CREDIT'`,
       [agentId],
     );
 
@@ -10009,42 +10009,50 @@ app.get("/api/agent-dashboard", async (req, res) => {
     const totalPayinAmount = Number(row.total_payin_amount || 0);
     const totalPayinTransactions = Number(row.total_payin_transactions || 0);
     const totalTransactions = Number(row.total_transactions || 0);
-    const totalCommissionAmount = Math.round(
-      totalPayinAmount * Number(agent.commission_percent || 0),
-    ) / 100;
+    const commissionResult = await pool.query(
+      `SELECT COALESCE(SUM(COALESCE(t.agent_commission_amount,
+                    ROUND(t.amount * COALESCE(t.agent_commission_percent, a.commission_percent, 0) / 100.0, 2))), 0) AS amount
+       FROM transactions t JOIN agents a ON a.id = t.agent_id
+       WHERE t.agent_id = $1 AND t.status IN ('Approved','Success') ${dateFilter}`,
+      values,
+    );
+    const totalCommissionAmount = Number(commissionResult.rows[0]?.amount || 0);
     const totalWithdrawalAmount = Number(
       withdrawalSummaryResult.rows[0]?.total_withdrawal_amount || 0,
     );
     const totalSettlementAmount = Number(
       settlementSummaryResult.rows[0]?.total_settlement_amount || 0,
     );
-    const walletBalance = Number(walletResult.rows[0]?.available_balance || 0);
+    const totalTopupAmount = Number(topupResult.rows[0]?.total_topup_amount || 0);
     const finalizedTransactions = Number(row.finalized_transactions || 0);
     const successRate = finalizedTransactions > 0
       ? Math.round((totalPayinTransactions / finalizedTransactions) * 10000) / 100
       : 0;
-    const totalOutstandingAmount = totalCommissionAmount - totalSettlementAmount;
+    const totalOutstandingAmount = Math.max(totalPayinAmount - totalSettlementAmount, 0);
+    const settlementRemaining = totalTopupAmount - totalPayinAmount;
 
     res.json({
       totalPayinAmount,
-      totalPayinTransactions: totalTransactions,
+      totalPayinTransactions,
       successfulPayinTransactions: totalPayinTransactions,
       totalTransactions,
       totalCommissionAmount,
       totalOutstandingAmount,
       payinAmountByAgent: totalPayinAmount,
-      payinTransactionsByAgent: totalTransactions,
-      agents: [{ id: agent.id, name: agent.name, amount: totalPayinAmount, transactions: totalTransactions }],
+      payinTransactionsByAgent: totalPayinTransactions,
+      agents: [{ id: agent.id, name: agent.name, amount: totalPayinAmount, transactions: totalPayinTransactions }],
       withdrawalAgents: [{ id: agent.id, name: agent.name, amount: totalWithdrawalAmount }],
       settlementAgents: [{ id: agent.id, name: agent.name, amount: totalSettlementAmount }],
       successRate,
       pendingVerifications: Number(row.pending_verifications || 0),
+      pendingPayinAmount: Number(row.pending_payin_amount || 0),
+      pendingPayinTransactions: Number(row.pending_payin_transactions || 0),
       totalWithdrawalAmount,
       totalSettlementAmount,
       // Wallet fields (folded in from the old Agent dashboard):
-      walletBalance,
-      settlementRemaining: walletBalance,
-      settlementAmount: Number(ledgerSumResult.rows[0]?.settlement_amount || 0),
+      totalTopupAmount,
+      settlementRemaining,
+      settlementAmount: totalSettlementAmount,
     });
   } catch (error) {
     console.log("Agent dashboard error:", error);
@@ -10182,16 +10190,7 @@ app.post(
           ],
         );
 
-        if (isWalletGateEnabled()) {
-          // Informational debit only — never blocks Pay-In creation. See
-          // debitAgentWalletForPayin: it cannot return ok:false for
-          // insufficient balance anymore, so there is no failure branch here.
-          await debitAgentWalletForPayin(client, {
-            agentId: account.agent_id,
-            amount: numericAmount,
-            transactionId: result.rows[0].id,
-          });
-        }
+        // Pending is a routing reservation only; do not post a financial debit.
 
         await client.query("COMMIT");
       } catch (txErr) {
@@ -10964,16 +10963,7 @@ app.post(
           ],
         );
 
-        if (isWalletGateEnabled()) {
-          // Informational debit only — never blocks Pay-In creation. See
-          // debitAgentWalletForPayin: it cannot return ok:false for
-          // insufficient balance anymore, so there is no failure branch here.
-          await debitAgentWalletForPayin(client, {
-            agentId: account.agent_id,
-            amount: numericAmount,
-            transactionId: result.rows[0].id,
-          });
-        }
+        // Pending is a routing reservation only; do not post a financial debit.
 
         await client.query("COMMIT");
       } catch (txErr) {

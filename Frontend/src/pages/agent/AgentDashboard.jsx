@@ -20,14 +20,17 @@ function AgentDashboard() {
     payinTransactionsByAgent: 0,
     successRate: 0,
     pendingVerifications: 0,
+    pendingPayinAmount: 0,
+    pendingPayinTransactions: 0,
     agents: [],
     totalWithdrawalAmount: 0,
     withdrawalAgents: [],
     totalSettlementAmount: 0,
     settlementAgents: [],
-    // Wallet-derived figures (folded in from the former Agent Dashboard).
+    // Backend-authoritative funding and settlement figures.
     settlementRemaining: 0,
     settlementAmount: 0,
+    totalTopupAmount: 0,
   });
 
   const [modalTitle, setModalTitle] = useState("");
@@ -107,6 +110,8 @@ function AgentDashboard() {
     { title: "PayIn Transactions By Agent", value: stats.payinTransactionsByAgent, onClick: openAgentTransactions, icon: ListChecks },
     { title: "Success Rate", value: `${stats.successRate || 0}%`, icon: Percent },
     { title: "Pending Verifications", value: stats.pendingVerifications, icon: Clock },
+    { title: "Pending Pay-In Amount", value: money(stats.pendingPayinAmount), icon: Clock },
+    { title: "Pending Pay-In Transactions", value: stats.pendingPayinTransactions, icon: Clock },
   ];
 
   return (
@@ -129,7 +134,7 @@ function AgentDashboard() {
           <div className="rounded-card border border-brand-teal/25 bg-brand-teal-light px-5 py-6">
             <p className="text-sm text-brand-teal-dark font-semibold mb-2 flex items-center gap-1.5">
               Settlement Remaining
-              <span title="Your current available funded balance — approved top-ups minus what's been consumed by routed Pay-Ins, refunded automatically if a Pay-In fails/expires/is rejected.">
+              <span title="Approved top-up credits minus successful Pay-Ins. Pending and UTR Submitted Pay-Ins are excluded.">
                 <Info size={14} className="text-brand-teal-dark/70" />
               </span>
             </p>
@@ -139,13 +144,13 @@ function AgentDashboard() {
           </div>
           <div className="rounded-card border border-slate-200 bg-white px-5 py-6 shadow-card">
             <p className="text-sm text-slate-600 font-semibold mb-2 flex items-center gap-1.5">
-              Settlement Amount
-              <span title="How much of your approved top-up balance has been consumed by Pay-Ins so far (net of any refunds).">
+              Total Top-Up Amount
+              <span title="Total approved wallet top-up credits. This is not a settlement amount.">
                 <Info size={14} className="text-slate-400" />
               </span>
             </p>
             <h2 className="text-2xl leading-none font-extrabold text-navy-900">
-              {money(stats.settlementAmount)}
+              {money(stats.totalTopupAmount)}
             </h2>
           </div>
         </div>

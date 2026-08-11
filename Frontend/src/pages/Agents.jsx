@@ -971,8 +971,8 @@ function Agents() {
     );
   }, [agents, search]);
 
-  // Live limit usage. Cap = max_payment_limit (0 = unlimited). Outstanding is
-  // approved+in-flight payins minus approved settlements (server-computed).
+  // Authoritative financial availability returned by the backend. In-flight
+  // routing reservations are reported separately and are not collected money.
   // "low" when <=10% of the cap is left; "exhausted" when nothing is left.
   const LIMIT_ALERT_PCT = 0.1;
   const limitInfo = (agent) => {
@@ -980,7 +980,7 @@ function Agents() {
     const outstanding = Number(agent.outstanding_amount || 0);
     if (limit <= 0)
       return { unlimited: true, limit, outstanding, available: Infinity, usedPct: 0, level: "ok" };
-    const available = limit - outstanding;
+    const available = Number(agent.available_payment_limit ?? (limit - outstanding));
     const usedPct = Math.min(100, Math.max(0, (outstanding / limit) * 100));
     let level = "ok";
     if (available <= 0) level = "exhausted";
@@ -1092,7 +1092,7 @@ function Agents() {
                 ) : (
                   <span>— only {inr(info.available)} left of {inr(info.limit)}</span>
                 )}
-                . Reassign its merchant to another agent, raise the limit, or add a settlement to free it up.
+                . This reflects approved collections awaiting settlement; pending Pay-Ins are not counted as collected money.
               </li>
             ))}
           </ul>

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "node --test --test-force-exit tests/trustpay-integration.test.js tests/external-agent-id.test.js"
+    "test": "node --test --test-force-exit tests/trustpay-integration.test.js tests/external-agent-id.test.js tests/agent-financial-metrics.test.js"
   },
   "keywords": [],
   "author": "",
