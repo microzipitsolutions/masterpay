@@ -2237,10 +2237,14 @@ async function initializeDatabase() {
       DECLARE
         rate NUMERIC;
       BEGIN
-        IF NEW.status = 'Approved' AND (OLD.status IS DISTINCT FROM 'Approved') AND NEW.agent_id IS NOT NULL THEN
+        IF NEW.status IN ('Approved','Success')
+           AND OLD.status IS DISTINCT FROM NEW.status
+           AND OLD.status NOT IN ('Approved','Success')
+           AND NEW.agent_id IS NOT NULL THEN
           SELECT commission_percent INTO rate FROM agents WHERE id = NEW.agent_id;
-          NEW.agent_commission_percent := COALESCE(rate, 0);
-          NEW.agent_commission_amount := ROUND(NEW.amount * COALESCE(rate, 0) / 100.0, 2);
+          rate := GREATEST(COALESCE(rate, 0), 0);
+          NEW.agent_commission_percent := rate;
+          NEW.agent_commission_amount := ROUND(NEW.amount * rate / 100.0, 2);
         END IF;
         RETURN NEW;
       END;
@@ -2262,12 +2266,13 @@ async function initializeDatabase() {
     // after the first.
     await pool.query(`
       UPDATE transactions t
-      SET agent_commission_percent = COALESCE(a.commission_percent, 0),
-          agent_commission_amount = ROUND(t.amount * COALESCE(a.commission_percent, 0) / 100.0, 2)
+      SET agent_commission_percent = GREATEST(COALESCE(a.commission_percent, 0), 0),
+          agent_commission_amount = ROUND(t.amount * GREATEST(COALESCE(a.commission_percent, 0), 0) / 100.0, 2)
       FROM agents a
       WHERE a.id = t.agent_id
-        AND t.status = 'Approved'
-        AND t.agent_commission_amount IS NULL;
+        AND t.status IN ('Approved','Success')
+        AND (t.agent_commission_amount IS NULL OR t.agent_commission_amount < 0
+             OR t.agent_commission_percent IS NULL OR t.agent_commission_percent < 0);
     `);
 
     // ─── WITHDRAWAL SUBSYSTEM ────────────────────────────────────────────────
@@ -3830,9 +3835,9 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
       await Promise.all([
         pool.query(
           `SELECT
-             COALESCE(SUM(CASE WHEN status='Approved' THEN amount ELSE 0 END),0) AS payin_received,
-             COUNT(CASE WHEN status='Approved' THEN 1 END) AS successful_count,
-             COUNT(CASE WHEN status IN ('Approved','Rejected','Failed','Expired') THEN 1 END) AS finalized_count
+             COALESCE(SUM(CASE WHEN status IN ('Approved','Success') THEN amount ELSE 0 END),0) AS payin_received,
+             COUNT(CASE WHEN status IN ('Approved','Success') THEN 1 END) AS successful_count,
+             COUNT(CASE WHEN status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized_count
            FROM transactions WHERE true${payinFilter}${clientPayinClause}`,
           payinValues,
         ),
@@ -3867,9 +3872,9 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
         // here — the agent's share is still money the platform collected, just
         // redistributed afterward. See the "Total Commission Earned" tooltip text.
         pool.query(
-          `SELECT COALESCE(SUM(t.amount * (m.commission_percent/100.0)),0) AS payin_commission
+          `SELECT COALESCE(SUM(t.amount * (GREATEST(COALESCE(m.commission_percent,0),0)/100.0)),0) AS payin_commission
            FROM transactions t JOIN merchants m ON m.id = t.merchant_id
-           WHERE t.status='Approved'${payinCommissionFilter}${clientId ? ` AND m.client_id = $${payinCommissionValues.length + 1}` : ""}`,
+           WHERE t.status IN ('Approved','Success')${payinCommissionFilter}${clientId ? ` AND m.client_id = $${payinCommissionValues.length + 1}` : ""}`,
           clientId ? [...payinCommissionValues, clientId] : payinCommissionValues,
         ),
         pool.query(
@@ -9288,7 +9293,7 @@ app.get("/api/admin-dashboard", async (req, res) => {
 
     const payinSummary = await pool.query(
       `SELECT
-         COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
+         COALESCE(SUM(CASE WHEN t.status IN ('Approved','Success') THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
          COUNT(t.id) AS total_payin_transactions,
          COUNT(CASE WHEN t.status IN ('Approved','Success') THEN 1 END) AS approved_count,
          COUNT(CASE WHEN t.status IN ('Approved','Success','Failed','Rejected','Expired') THEN 1 END) AS finalized_count
@@ -9362,9 +9367,12 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const agentCommDate = addDateFilter("t", agentValues);
 
     const agentCommission = await pool.query(
-      `SELECT a.id, a.name, COALESCE(SUM(t.amount * (a.commission_percent / 100.0)), 0) AS amount
+      `SELECT a.id, a.name,
+              COALESCE(SUM(CASE WHEN t.agent_commission_amount >= 0 THEN t.agent_commission_amount
+                                ELSE ROUND(t.amount * GREATEST(COALESCE(t.agent_commission_percent, a.commission_percent, 0), 0) / 100.0, 2)
+                           END), 0) AS amount
        FROM agents a
-       LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${agentMerchantJoin} ${agentCommDate}
+       LEFT JOIN transactions t ON t.agent_id = a.id AND t.status IN ('Approved','Success') ${agentMerchantJoin} ${agentCommDate}
        WHERE a.created_by_admin_id = $1 ${agentFilter}
        GROUP BY a.id, a.name ORDER BY amount DESC`,
       agentValues,
@@ -9385,9 +9393,9 @@ app.get("/api/admin-dashboard", async (req, res) => {
     const merchantCommDate = addDateFilter("t", merchantValues);
 
     const merchantCommission = await pool.query(
-      `SELECT m.id, m.name, COALESCE(SUM(t.amount * (m.commission_percent / 100.0)), 0) AS amount
+      `SELECT m.id, m.name, COALESCE(SUM(t.amount * (GREATEST(COALESCE(m.commission_percent,0),0) / 100.0)), 0) AS amount
        FROM merchants m
-       LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status = 'Approved' ${merchantAgentJoin} ${merchantCommDate}
+       LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status IN ('Approved','Success') ${merchantAgentJoin} ${merchantCommDate}
        WHERE m.created_by_admin_id = $1 ${merchantFilter}
        GROUP BY m.id, m.name ORDER BY amount DESC`,
       merchantValues,
@@ -9449,8 +9457,9 @@ app.get("/api/admin-dashboard", async (req, res) => {
 
     res.json({
       adminCommission,
-      // Admin's margin on payins == payin commission (alias for the dashboard KPI).
-      payinCommission: adminCommission,
+      // Gross fee charged at the merchant rate. Platform margin is reported
+      // separately as adminCommission after deducting the agent's earned share.
+      payinCommission: totalMerchantCommission,
       payoutCommission,
       settlementRemaining,
       settlementRemainingByAgent: Number(
@@ -9551,9 +9560,11 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
         const dateFilter = addDateFilter("t", vals);
         result = await pool.query(
           `SELECT a.id, a.name,
-             COALESCE(SUM(t.amount * (a.commission_percent / 100.0)), 0) AS amount
+             COALESCE(SUM(CASE WHEN t.agent_commission_amount >= 0 THEN t.agent_commission_amount
+                               ELSE ROUND(t.amount * GREATEST(COALESCE(t.agent_commission_percent, a.commission_percent, 0), 0) / 100.0, 2)
+                          END), 0) AS amount
            FROM agents a
-           LEFT JOIN transactions t ON t.agent_id = a.id AND t.status = 'Approved' ${selectedMerchantId ? `AND t.merchant_id = $${values.length}` : ""} ${dateFilter}
+           LEFT JOIN transactions t ON t.agent_id = a.id AND t.status IN ('Approved','Success') ${selectedMerchantId ? `AND t.merchant_id = $${values.length}` : ""} ${dateFilter}
            WHERE ${agentFilter} GROUP BY a.id, a.name ORDER BY amount DESC`,
           vals,
         );
@@ -9565,9 +9576,9 @@ app.get("/api/admin-dashboard/details", async (req, res) => {
         const dateFilter = addDateFilter("t", vals);
         result = await pool.query(
           `SELECT m.id, m.name,
-             COALESCE(SUM(t.amount * (m.commission_percent / 100.0)), 0) AS amount
+             COALESCE(SUM(t.amount * (GREATEST(COALESCE(m.commission_percent,0),0) / 100.0)), 0) AS amount
            FROM merchants m
-           LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status = 'Approved' ${selectedAgentId ? "AND t.agent_id = $2" : ""} ${dateFilter}
+           LEFT JOIN transactions t ON t.merchant_id = m.id AND t.status IN ('Approved','Success') ${selectedAgentId ? "AND t.agent_id = $2" : ""} ${dateFilter}
            WHERE ${merchantFilter} GROUP BY m.id, m.name ORDER BY amount DESC`,
           vals,
         );
@@ -9812,9 +9823,9 @@ app.get("/api/merchant-dashboard", async (req, res) => {
     // Approved amounts only
     const payinSummary = await pool.query(
       `SELECT
-         COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
+         COALESCE(SUM(CASE WHEN t.status IN ('Approved','Success') THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
          COUNT(t.id) AS total_payin_transactions,
-         COUNT(CASE WHEN t.status = 'Approved' THEN 1 END) AS approved,
+         COUNT(CASE WHEN t.status IN ('Approved','Success') THEN 1 END) AS approved,
          COUNT(CASE WHEN t.status IN ('Pending','UTR Submitted') THEN 1 END) AS pending,
          COUNT(CASE WHEN t.status = 'Rejected' THEN 1 END) AS rejected
          ,COUNT(CASE WHEN t.status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized
@@ -9870,7 +9881,7 @@ app.get("/api/merchant-dashboard", async (req, res) => {
     );
     const approvedTransactions = Number(payinSummary.rows[0]?.approved || 0);
     const totalCommissionAmount =
-      totalPayinAmount * (Number(merchant?.commission_percent || 0) / 100);
+      totalPayinAmount * (Math.max(Number(merchant?.commission_percent || 0), 0) / 100);
 
     const payoutCommissionAmount = Number(
       payoutCommissionResult.rows[0]?.payout_commission || 0,
@@ -10052,8 +10063,8 @@ app.get("/api/agent-dashboard", async (req, res) => {
     const totalPayinTransactions = Number(row.total_payin_transactions || 0);
     const totalTransactions = Number(row.total_transactions || 0);
     const commissionResult = await pool.query(
-      `SELECT COALESCE(SUM(COALESCE(t.agent_commission_amount,
-                    ROUND(t.amount * COALESCE(t.agent_commission_percent, a.commission_percent, 0) / 100.0, 2))), 0) AS amount
+      `SELECT COALESCE(SUM(CASE WHEN t.agent_commission_amount >= 0 THEN t.agent_commission_amount
+                    ELSE ROUND(t.amount * GREATEST(COALESCE(t.agent_commission_percent, a.commission_percent, 0), 0) / 100.0, 2) END), 0) AS amount
        FROM transactions t JOIN agents a ON a.id = t.agent_id
        WHERE t.agent_id = $1 AND t.status IN ('Approved','Success') ${dateFilter}`,
       values,
