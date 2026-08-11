@@ -3831,8 +3831,8 @@ async function computeFinancialSummary(startDate, endDate, clientId) {
         pool.query(
           `SELECT
              COALESCE(SUM(CASE WHEN status='Approved' THEN amount ELSE 0 END),0) AS payin_received,
-             COUNT(CASE WHEN status='Approved' THEN 1 END) AS successful_count,
-             COUNT(CASE WHEN status IN ('Approved','Rejected','Failed','Expired') THEN 1 END) AS finalized_count
+             COUNT(CASE WHEN status IN ('Approved','Success') THEN 1 END) AS successful_count,
+             COUNT(CASE WHEN status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized_count
            FROM transactions WHERE true${payinFilter}${clientPayinClause}`,
           payinValues,
         ),
@@ -9449,8 +9449,14 @@ app.get("/api/admin-dashboard", async (req, res) => {
 
     res.json({
       adminCommission,
-      // Admin's margin on payins == payin commission (alias for the dashboard KPI).
-      payinCommission: adminCommission,
+      // "Payin Commission" is the gross fee earned on approved Pay-Ins
+      // (merchant commission_percent x approved amount) — the same figure
+      // Settlement Remaining already subtracts above. adminCommission
+      // (merchant commission minus the agent's share) is a separate net-margin
+      // figure that can legitimately run negative when an agent's rate exceeds
+      // the merchant's; it must not be surfaced as "Payin Commission" on a
+      // normal approved Pay-In.
+      payinCommission: totalMerchantCommission,
       payoutCommission,
       settlementRemaining,
       settlementRemainingByAgent: Number(
@@ -9814,7 +9820,7 @@ app.get("/api/merchant-dashboard", async (req, res) => {
       `SELECT
          COALESCE(SUM(CASE WHEN t.status = 'Approved' THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
          COUNT(t.id) AS total_payin_transactions,
-         COUNT(CASE WHEN t.status = 'Approved' THEN 1 END) AS approved,
+         COUNT(CASE WHEN t.status IN ('Approved','Success') THEN 1 END) AS approved,
          COUNT(CASE WHEN t.status IN ('Pending','UTR Submitted') THEN 1 END) AS pending,
          COUNT(CASE WHEN t.status = 'Rejected' THEN 1 END) AS rejected
          ,COUNT(CASE WHEN t.status IN ('Approved','Success','Rejected','Failed','Expired') THEN 1 END) AS finalized
