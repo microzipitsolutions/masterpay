@@ -7718,6 +7718,44 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     }
     const proofUrl=String(proof.url||"").trim()||null;
     const proofMetadata={...(proof.metadata&&typeof proof.metadata==="object"?proof.metadata:{}),reference:String(proof.reference||proofUrl||"").trim()||null,source:"trustpay"};
+
+    // Agent-proof match — the same two-sided settle that
+    // /api/checkout/:ref/submit-utr and /api/payin/submit-utr already do.
+    // Without it a TrustPay Pay-In stays at 'UTR Submitted' forever even when
+    // the agent bot has already posted the matching proof, and that proof row
+    // is left orphaned. Match on amount + UTR only (UTR is unique system-wide);
+    // amount within <₹1 so a 1944 agent proof still matches a 1944.44 payment.
+    const agentProof=await db.query(
+      `SELECT * FROM transactions
+       WHERE status = 'Agent Verified'
+         AND LOWER(TRIM(utr_number)) = LOWER(TRIM($1))
+         AND ABS(amount - $2) < 1
+         AND id <> $3
+       LIMIT 1`,
+      [utr,Number(current.amount),current.id]);
+    if(agentProof.rows.length){
+      const p=agentProof.rows[0];
+      await db.query(`DELETE FROM transactions WHERE id=$1`,[p.id]);
+      // Re-attribute to the account the money ACTUALLY landed in (the proof's),
+      // not the one the order was routed to, so bank tracking credits the right bank.
+      const settled=(await db.query(`UPDATE transactions SET utr_number=$1,
+        payment_proof=COALESCE($2,NULLIF(payment_proof,'')),payment_proof_metadata=$3,
+        status='Approved',utr_submitted_at=COALESCE(utr_submitted_at,NOW()),approved_or_reject_date=NOW(),
+        account_id=$5,agent_id=COALESCE($6,agent_id),bank_name=$7,ifsc_code=$8,
+        account_number=$9,account_holder_name=$10,upi_id=$11
+        WHERE id=$4 RETURNING *`,
+        [utr,proofUrl||p.payment_proof||null,proofMetadata,current.id,
+         p.account_id,p.agent_id,p.bank_name||"",p.ifsc_code||"",
+         p.account_number||"",p.account_holder_name||"",p.upi_id||""])).rows[0];
+      await db.query(`INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,external_merchant_id,external_transaction_id,agent_id,request_digest,outcome,details)
+        VALUES($1,'payin.utr_submitted',$2,$3,$4,$5,$6,'accepted',$7)`,
+        [tenant,key,settled.external_merchant_id,externalTxn,settled.agent_id,digest,
+         {transaction_id:settled.id,masterpay_transaction_ref:settled.transaction_id,matched_agent_proof_id:p.id,approved:true}]);
+      await db.query("COMMIT");
+      await fireWebhook(pool,settled,"payin.approved");
+      return res.json({success:true,matched_agent_proof:true,transaction:settled});
+    }
+
     const updated=(await db.query(`UPDATE transactions SET utr_number=$1,
       payment_proof=COALESCE($2,payment_proof),payment_proof_metadata=$3,
       status=CASE WHEN status IN ('Pending','UTR Submitted') THEN 'UTR Submitted' ELSE status END,
