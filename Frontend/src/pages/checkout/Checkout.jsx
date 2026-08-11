@@ -22,7 +22,8 @@ function buildUpiParams({ upiId, payeeName, amount, note, ref }) {
   return parts.join("&");
 }
 
-// Generic UPI URI used by the QR code.
+// Generic UPI link (used by the QR). The "Pay with" buttons reuse buildUpiParams
+// with each app's own scheme so PhonePe/Paytm open directly on a phone.
 function buildUpiUri({ upiId, payeeName, amount, note, ref }) {
   if (!upiId) return "";
   return `upi://pay?${buildUpiParams({ upiId, payeeName, amount, note, ref })}`;
@@ -99,6 +100,7 @@ export default function Checkout({ basePath = "/api/checkout" } = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [utr, setUtr] = useState("");
+  const [payApp, setPayApp] = useState("phonepe"); // selected "Pay with" UPI app
   const [resubmitOpen, setResubmitOpen] = useState(false);
   const [resubmitUtr, setResubmitUtr] = useState("");
   const [disputeUtr, setDisputeUtr] = useState("");
@@ -285,6 +287,32 @@ useEffect(() => {
     if (remaining <= 60) return "text-amber-600";
     return "text-slate-900";
   }, [remaining]);
+
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      // iPadOS 13+ reports as Mac with touch
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
+  // "Pay with" deep links. Custom schemes (phonepe://, paytmmp://) and Android
+  // intent:// URLs proved unreliable — they open the app but fail on the pay step,
+  // and intent:// does nothing on iOS. The QR works because it's a plain upi://pay
+  // intent, so every button now uses that exact same payload. On Android this opens
+  // the UPI app chooser and pays correctly. iOS has no reliable UPI intent, so there
+  // we steer the user to scan the QR / copy the UPI ID instead of a broken button.
+  const appLinks = useMemo(() => {
+    const bd = data?.bank_details;
+    if (!bd?.upi_id) return null;
+    const q = buildUpiParams({
+      upiId: bd.upi_id,
+      payeeName: bd.account_holder_name,
+      amount: data.amount,
+      note: data.merchant_order_id || data.transaction_ref,
+      ref: data.transaction_ref,
+    });
+    const generic = `upi://pay?${q}`;
+    return { phonepe: generic, paytm: generic, other: generic };
+  }, [data]);
 
   if (loading) {
     return (
@@ -476,11 +504,11 @@ const showForm = status === "Pending";
                   ref: data.transaction_ref,
                 });
                 return (
-                  <div className="px-5 py-6 sm:px-8">
+                  <div className="px-5 py-4">
                     <h3 className="text-sm font-semibold text-slate-700 mb-3 text-center">Scan & Pay with any UPI app</h3>
                     <div className="flex justify-center">
-                      <div className="w-full max-w-[232px] bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                        <QRCodeSVG value={upiUri} width="100%" height="auto" viewBox="0 0 256 256" level="M" includeMargin={false} />
+                      <div className="bg-white p-3 rounded-xl border border-slate-200">
+                        <QRCodeSVG value={upiUri} size={180} level="M" includeMargin={false} />
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-center">
@@ -491,6 +519,62 @@ const showForm = status === "Pending";
                   </div>
                 );
               })()}
+
+              {appLinks && !data.hide_app_buttons && (
+                <div className="px-5 py-4 border-t border-slate-100">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Pay with
+                  </h3>
+                  {isIOS ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      On iPhone, open your UPI app (PhonePe / Paytm / GPay) and{" "}
+                      <b>scan the QR above</b>, or copy the UPI ID below and pay
+                      manually. iOS can’t open UPI apps directly from a payment link.
+                    </div>
+                  ) : (
+                  <>
+                  <div className="space-y-2">
+                    {[
+                      { id: "phonepe", label: "PhonePe", badge: <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#5f259f] text-[10px] font-bold text-white">Pe</span> },
+                      { id: "paytm", label: "Paytm", badge: <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#00baf2] text-[9px] font-bold text-white">PT</span> },
+                      { id: "other", label: "Other UPI", badge: <span className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-800 text-[8px] font-bold text-white">UPI</span> },
+                    ].map((app) => {
+                      const selected = payApp === app.id;
+                      return (
+                        <button
+                          key={app.id}
+                          type="button"
+                          onClick={() => setPayApp(app.id)}
+                          className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 transition ${selected ? "border-brand-blue ring-1 ring-brand-blue" : "border-slate-200 hover:border-slate-300"}`}
+                        >
+                          <span className="flex items-center gap-3">
+                            {app.badge}
+                            <span className="text-sm font-medium text-navy-900">{app.label}</span>
+                          </span>
+                          <span className={`flex h-5 w-5 items-center justify-center rounded-full border ${selected ? "border-brand-blue bg-brand-blue" : "border-slate-300"}`}>
+                            {selected && (
+                              <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3 text-white">
+                                <path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0L3.3 9.7a1 1 0 011.4-1.4l3.1 3.1 6.8-6.8a1 1 0 011.4 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <a
+                    href={appLinks[payApp]}
+                    className="mt-4 block w-full rounded-xl brand-gradient py-3 text-center font-semibold text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)] transition hover:brightness-[1.06]"
+                  >
+                    Pay ₹{Number(data.amount).toLocaleString("en-IN")}
+                  </a>
+                  <p className="mt-2 text-center text-[11px] text-slate-500">
+                    Opens the selected app with the amount pre-filled. On a computer, scan the QR above instead.
+                  </p>
+                  </>
+                  )}
+                </div>
+              )}
 
               <form onSubmit={submitUtr} className="px-5 py-4 border-t border-slate-100">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
