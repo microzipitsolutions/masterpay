@@ -10365,33 +10365,29 @@ app.post("/api/payin/agent-submitutr", async (req, res) => {
 
     if (existingUtr.rows.length > 0) {
       const existing = existingUtr.rows[0];
-      if (
-        !amountsMatch(existing.amount, numericAmount) ||
-        String(existing.account_number).trim() !== cleanAccountNumber ||
-        Number(existing.agent_id) !== Number(agent.id)
-      ) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            message:
-              "UTR already exists but belongs to another transaction/account/agent",
-            existing,
-          });
+      // Match on UTR + amount ONLY (UTR is unique system-wide). The account and
+      // agent are deliberately NOT compared: the caller is already proven to own
+      // an active account, and MasterPay may route the order to a different
+      // account of the same agent than the one the bot scrapes. Comparing them
+      // only stranded real payments until they expired.
+      if (!amountsMatch(existing.amount, numericAmount)) {
+        return res.status(409).json({
+          success: false,
+          message: "UTR already exists with a different amount",
+          existing,
+        });
       }
     }
 
+    // Approve on UTR + amount alone and leave the merchant row's own account and
+    // agent in place — attribution stays with the entry the customer actually paid.
     const matchedExisting = await pool.query(
       `UPDATE transactions SET status = 'Approved', approved_or_reject_date = CURRENT_TIMESTAMP
-       WHERE TRIM(account_number) = TRIM($1) AND (LOWER(TRIM(utr_number)) = LOWER(TRIM($2)) OR LOWER(TRIM(disputed_utr)) = LOWER(TRIM($2))) AND ABS(amount - $3) < 1 AND agent_id = $4 AND account_id = $5 AND status IN ('Pending', 'UTR Submitted', 'Disputed')
+       WHERE (LOWER(TRIM(utr_number)) = LOWER(TRIM($1)) OR LOWER(TRIM(disputed_utr)) = LOWER(TRIM($1)))
+         AND ABS(amount - $2) < 1
+         AND status IN ('Pending', 'UTR Submitted', 'Disputed')
        RETURNING *`,
-      [
-        cleanAccountNumber,
-        cleanUtrNumber,
-        numericAmount,
-        agent.id,
-        account.id,
-      ],
+      [cleanUtrNumber, numericAmount],
     );
 
     if (matchedExisting.rows.length > 0) {
