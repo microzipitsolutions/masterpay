@@ -1013,8 +1013,12 @@ async function fireWebhook(pool, txn, eventName = "payin.approved") {
 // path here is wrapped so a failure can never throw back into the caller.
 
 function alertPanelUrl(path) {
-  const base = process.env.CHECKOUT_BASE_URL || "http://localhost:5173";
-  return `${base}${path}`;
+  const base =
+    process.env.CHECKOUT_BASE_URL ||
+    process.env.FRONTEND_URL ||
+    process.env.BASE_URL ||
+    "http://localhost:5173";
+  return `${base.replace(/\/+$/, "")}${path}`;
 }
 
 function alertMoney(v) {
@@ -10782,8 +10786,14 @@ app.get(
 // hosted page: GET /api/checkout/:ref, POST /api/checkout/:ref/submit-utr, and
 // GET /api/checkout/:ref/status.
 
+// Falls back to the deployment's own public URL before localhost — a missing
+// CHECKOUT_BASE_URL in production used to hand merchants
+// http://localhost:5173/checkout/<ref>, which is unreachable for the customer.
 const CHECKOUT_BASE_URL = (
-  process.env.CHECKOUT_BASE_URL || "http://localhost:5173"
+  process.env.CHECKOUT_BASE_URL ||
+  process.env.FRONTEND_URL ||
+  process.env.BASE_URL ||
+  "http://localhost:5173"
 ).replace(/\/+$/, "");
 const CHECKOUT_TTL_SECONDS = 15 * 60; // 15 minutes — customer must submit UTR within this window
 const VERIFICATION_TTL_SECONDS = 15 * 60; // 15 minutes — after UTR submitted, auto-fail if no match
