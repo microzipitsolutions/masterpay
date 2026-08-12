@@ -7779,7 +7779,7 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     await db.query("COMMIT");
     await fireWebhook(pool,updated,"payin.utr_submitted");
     return res.json({success:true,transaction:updated});
-  }catch(e){await db.query("ROLLBACK").catch(()=>{});console.error("TrustPay UTR sync error:",e.message);return res.status(500).json({success:false,message:"Could not synchronize external Pay-In UTR"});}finally{db.release();}
+  }catch(e){await db.query("ROLLBACK").catch(()=>{});if(e&&e.code==="23505"){return res.status(409).json({success:false,message:"UTR already used on another live transaction"});}console.error("TrustPay UTR sync error:",e.message);return res.status(500).json({success:false,message:"Could not synchronize external Pay-In UTR"});}finally{db.release();}
 });
 
 app.get("/api/agent/external-merchants", async (req, res) => {
