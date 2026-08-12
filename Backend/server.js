@@ -11227,8 +11227,15 @@ app.post("/api/checkout/:ref/submit-utr", async (req, res) => {
                utr_submitted_at = COALESCE(utr_submitted_at, NOW()),
                approved_or_reject_date = NOW(),
                account_id = $4,
-               agent_id = $5,
-               agent_id = COALESCE($6, agent_id),
+               -- Was two assignments to agent_id in one SET clause
+               -- (agent_id = $5 AND agent_id = COALESCE($6, agent_id)),
+               -- which Postgres rejects outright
+               -- ("multiple assignments to same column"). It threw on every
+               -- customer UTR submit that matched an agent's proof, so the
+               -- auto-approve never ran and the payin sat at UTR Submitted.
+               -- $5 and $6 are both proof.agent_id; COALESCE over both keeps
+               -- each placeholder referenced so their types still resolve.
+               agent_id = COALESCE($5, $6, agent_id),
                bank_name = $7,
                ifsc_code = $8,
                account_number = $9,
