@@ -7779,7 +7779,7 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     await db.query("COMMIT");
     await fireWebhook(pool,updated,"payin.utr_submitted");
     return res.json({success:true,transaction:updated});
-  }catch(e){await db.query("ROLLBACK").catch(()=>{});console.error("TrustPay UTR sync error:",e.message);return res.status(500).json({success:false,message:"Could not synchronize external Pay-In UTR"});}finally{db.release();}
+  }catch(e){await db.query("ROLLBACK").catch(()=>{});if(e&&e.code==="23505"){return res.status(409).json({success:false,message:"UTR already used on another live transaction"});}console.error("TrustPay UTR sync error:",e.message);return res.status(500).json({success:false,message:"Could not synchronize external Pay-In UTR"});}finally{db.release();}
 });
 
 app.get("/api/agent/external-merchants", async (req, res) => {
@@ -11232,8 +11232,13 @@ app.post("/api/checkout/:ref/submit-utr", async (req, res) => {
                utr_submitted_at = COALESCE(utr_submitted_at, NOW()),
                approved_or_reject_date = NOW(),
                account_id = $4,
-               agent_id = $5,
-               agent_id = COALESCE($6, agent_id),
+               -- Was two assignments to agent_id in one SET clause, which
+               -- Postgres rejects ("multiple assignments to same column"),
+               -- so this auto-approve threw on every customer UTR that
+               -- matched an agent proof. $5 and $6 are both proof.agent_id;
+               -- COALESCE over both keeps each placeholder referenced so
+               -- their types still resolve.
+               agent_id = COALESCE($5, $6, agent_id),
                bank_name = $7,
                ifsc_code = $8,
                account_number = $9,
