@@ -176,9 +176,18 @@ function PayinTransactionList() {
     [receivedProofs],
   );
 
+  // "Merchant Name" here is the TrustPay merchant/sub-merchant behind the
+  // incoming transaction (trustpay_merchant_name, joined server-side from the
+  // TrustPay integration's own assignment mapping), not MasterPay's own
+  // merchant. Falls back to MasterPay's merchant_name for transactions that
+  // didn't come through the TrustPay integration.
   const allRows = useMemo(
     () => [
-      ...transactions.map((t) => ({ ...t, _id: `txn-${t.id}` })),
+      ...transactions.map((t) => ({
+        ...t,
+        _id: `txn-${t.id}`,
+        merchant_name: t.trustpay_merchant_name || t.merchant_name,
+      })),
       ...normalizedReceived,
     ],
     [transactions, normalizedReceived],
@@ -245,6 +254,25 @@ function PayinTransactionList() {
     startDate,
     endDate,
   ]);
+
+  // Successful-transaction statuses, matching the definition used elsewhere in
+  // the project for "received"/successful Pay-In totals (Approved, the
+  // Agent Verified bank-proof match, and the legacy 'Success' synonym).
+  const trustpayMerchantSummary = useMemo(() => {
+    const successfulStatuses = new Set(["Approved", "Agent Verified", "Success"]);
+    const map = new Map();
+    for (const row of filteredTransactions) {
+      const name = row.trustpay_merchant_name;
+      if (!name) continue;
+      if (!map.has(name)) map.set(name, { name, count: 0, amount: 0 });
+      if (successfulStatuses.has(row.status)) {
+        const entry = map.get(name);
+        entry.count += 1;
+        entry.amount += Number(row.amount || 0);
+      }
+    }
+    return [...map.values()].sort((a, b) => b.amount - a.amount);
+  }, [filteredTransactions]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -437,70 +465,47 @@ function PayinTransactionList() {
   return (
     <div className="min-h-screen bg-white">
       <div className="p-4 md:p-6 overflow-x-hidden">
-        <div className="mb-8">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">
-              Payin Transaction List
-            </h1>
+        <h1 className="mb-5 text-2xl sm:text-3xl font-extrabold tracking-tight text-navy-900">
+          Payin Transaction List
+        </h1>
 
-            <div className="flex flex-wrap items-end gap-3">
+        <div className="mb-6 rounded-card border border-slate-200 bg-slate-50/60 p-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-transparent select-none" aria-hidden="true">
+                Export
+              </label>
               <button
                 type="button"
                 onClick={() => setShowExportModal(true)}
-                className="h-11 rounded-control brand-gradient px-5 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)] hover:brightness-[1.06]"
+                className="h-10 w-full whitespace-nowrap rounded-control brand-gradient px-4 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(30,136,255,0.35)] hover:brightness-[1.06]"
               >
                 Export
               </button>
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-gray-900">
-                  Search
-                </label>
-                <input
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-11 w-48 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-gray-900">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="h-11 w-44 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-gray-900">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="h-11 w-44 rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
-                />
-              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             <div>
-              <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Select Merchant
+              <label className="mb-1.5 block text-xs font-semibold text-gray-900">
+                Search
+              </label>
+              <input
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-gray-900">
+                Merchant
               </label>
               <select
                 value={merchantFilter}
                 onChange={(e) => setMerchantFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
               >
-                <option value="">Search...</option>
+                <option value="">All merchants</option>
                 {uniqueValues("merchant_name").map((name) => (
                   <option key={name} value={name}>
                     {name}
@@ -510,15 +515,15 @@ function PayinTransactionList() {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Select Agents
+              <label className="mb-1.5 block text-xs font-semibold text-gray-900">
+                Agent
               </label>
               <select
                 value={agentFilter}
                 onChange={(e) => setAgentFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
               >
-                <option value="">Search...</option>
+                <option value="">All agents</option>
                 {uniqueValues("agent_name").map((name) => (
                   <option key={name} value={name}>
                     {name}
@@ -528,41 +533,65 @@ function PayinTransactionList() {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Select Agent
-              </label>
-              <select
-                value={agentFilter}
-                onChange={(e) => setAgentFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
-              >
-                <option value="">Search...</option>
-                {uniqueValues("agent_name").map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-xs font-semibold text-gray-900">
-                Select Status
+              <label className="mb-1.5 block text-xs font-semibold text-gray-900">
+                Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none"
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
               >
-                <option value="">Search...</option>
+                <option value="">All statuses</option>
                 <option value="Pending">Pending</option>
                 <option value="Agent Verified">Agent Verified</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
               </select>
             </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-gray-900">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-gray-900">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
+              />
+            </div>
           </div>
         </div>
+
+        {trustpayMerchantSummary.length > 0 && (
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+            {trustpayMerchantSummary.map((m) => (
+              <div key={m.name} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="truncate text-sm font-semibold text-navy-900" title={m.name}>
+                  {m.name}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {m.count} successful transaction{m.count === 1 ? "" : "s"}
+                </div>
+                <div className="mt-1 text-base font-bold text-navy-900 tabular-nums">
+                  ₹{m.amount.toLocaleString("en-IN")}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {message && (
           <div
@@ -576,32 +605,23 @@ function PayinTransactionList() {
           </div>
         )}
 
-        <div className="overflow-auto rounded-card border border-slate-200 bg-white shadow-card">
-          <table className="w-full min-w-[1000px]">
+        <div className="overflow-x-auto rounded-card border border-slate-200 bg-white shadow-card">
+          <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 backdrop-blur">
               <tr>
-                {[
-                  "ID",
-                  "Transaction ID",
-                  "Amount",
-                  "UTR Number",
-                  "Transaction Status",
-                  "Bank Name",
-                  "Account Number",
-                  "Merchant Name",
-                  "Created Date",
-                  "Approved/Reject Date",
-                  "UTR Submitted Date",
-                  "View All",
-                  "Action",
-                ].map((heading) => (
-                  <th
-                    key={heading}
-                    className="px-5 py-4 text-left text-sm font-bold text-gray-900"
-                  >
-                    {heading}
-                  </th>
-                ))}
+                <th className="min-w-[56px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">ID</th>
+                <th className="min-w-[170px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Transaction ID</th>
+                <th className="min-w-[100px] whitespace-nowrap px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-gray-500">Amount</th>
+                <th className="min-w-[150px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">UTR Number</th>
+                <th className="min-w-[120px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Status</th>
+                <th className="min-w-[140px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Bank Name</th>
+                <th className="min-w-[150px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Account Number</th>
+                <th className="min-w-[170px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">TrustPay Merchant Name</th>
+                <th className="min-w-[160px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Created Date</th>
+                <th className="min-w-[160px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Approved/Reject Date</th>
+                <th className="min-w-[160px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">UTR Submitted Date</th>
+                <th className="min-w-[90px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">View All</th>
+                <th className="min-w-[170px] whitespace-nowrap px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-gray-500">Action</th>
               </tr>
             </thead>
 
@@ -620,56 +640,56 @@ function PayinTransactionList() {
                 </tr>
               ) : (
                 pagedTransactions.map((row, index) => (
-                  <tr key={row._id || row.id} className="border-b border-gray-100">
-                    <td className="px-5 py-5 text-sm">{(currentPage - 1) * pageSize + index + 1}</td>
-                    <td className="px-5 py-5 text-sm">
+                  <tr key={row._id || row.id} className="border-b border-gray-100 align-middle">
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">{(currentPage - 1) * pageSize + index + 1}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-700">
                       {row.transaction_id || "-"}
                     </td>
-                    <td className="px-5 py-5 text-sm">{row.amount || 0}</td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-right text-sm font-semibold tabular-nums text-slate-900">{row.amount || 0}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-700">
                       {row.utr_number || "-"}
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
+                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(
                           row.status
                         )}`}
                       >
                         {row.status || "Pending"}
                       </span>
                     </td>
-                    <td className="px-5 py-5 text-sm">{row.bank_name || "-"}</td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">{row.bank_name || "-"}</td>
+                    <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-700">
                       {row.account_number || "-"}
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-700">
                       {row.merchant_name || "-"}
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-xs tabular-nums text-slate-500">
                       {formatDate(row.created_at)}
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-xs tabular-nums text-slate-500">
                       {formatDate(row.approved_or_reject_date)}
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-xs tabular-nums text-slate-500">
                       {formatDate(row.utr_submitted_at)}
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <button
                         type="button"
                         onClick={() => setSelectedTransaction(row)}
-                        className="font-medium text-[#1E88FF] underline"
+                        className="whitespace-nowrap font-medium text-[#1E88FF] underline"
                       >
                         View All
                       </button>
                     </td>
-                    <td className="px-5 py-5 text-sm">
+                    <td className="whitespace-nowrap px-4 py-4 text-sm">
                       <div className="flex items-center gap-2">
                         {!row._isReceivedProof && (
                           <button
                             type="button"
                             onClick={() => openEdit(row)}
-                            className="rounded-full brand-gradient px-3 py-2 text-sm font-semibold text-white hover:brightness-[1.06]"
+                            className="whitespace-nowrap rounded-full brand-gradient px-3 py-1.5 text-sm font-semibold text-white hover:brightness-[1.06]"
                           >
                             Edit
                           </button>
@@ -678,7 +698,7 @@ function PayinTransactionList() {
                           type="button"
                           onClick={() => setWebhookTransaction(row)}
                           disabled={!row.webhook_url}
-                          className={`rounded-full px-3 py-2 text-sm font-semibold ${
+                          className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ${
                             row.webhook_url
                               ? "bg-[#dbe7f5] text-[#0b2a5b]"
                               : "cursor-not-allowed bg-gray-100 text-gray-400"

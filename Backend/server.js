@@ -7821,12 +7821,17 @@ app.get("/api/transactions", async (req, res) => {
     const role = auth.role;
     const userId = Number(auth.userId);
 
+    // trustpay_merchant_name is joined in for admin only: it's the TrustPay
+    // merchant/sub-merchant behind the incoming transaction (via
+    // trustpay_external_merchant_assignments), distinct from merchant_name
+    // (MasterPay's own merchant). Scoped to admin so it isn't newly exposed
+    // to agent/merchant callers of this shared endpoint.
     let query = `
       SELECT t.*, m.name AS merchant_name, m.is_active AS merchant_status,
-             a.name AS agent_name, a.is_active AS agent_status
+             a.name AS agent_name, a.is_active AS agent_status${role === "admin" ? ", x.external_merchant_name AS trustpay_merchant_name" : ""}
       FROM transactions t
       LEFT JOIN merchants m ON t.merchant_id = m.id
-      LEFT JOIN agents a ON t.agent_id = a.id
+      LEFT JOIN agents a ON t.agent_id = a.id${role === "admin" ? " LEFT JOIN trustpay_external_merchant_assignments x ON t.external_assignment_id = x.id" : ""}
     `;
     const values = [];
 
