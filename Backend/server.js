@@ -665,6 +665,15 @@ function amountsMatch(a, b) {
   return Math.abs(na - nb) < 1;
 }
 
+// Customers submit the real UTR wrapped in noise: "UTR-138320644088",
+// "RRN 1383 2064 4088", stray spaces, mixed case. Comparing raw strings left
+// those payments unmatched against the agent's proof until they expired.
+// Normalise BOTH sides: lowercase, drop a leading label, strip every
+// non-alphanumeric. Amount still has to match, so this only ever loosens a
+// comparison that is already pinned to one payment.
+const utrNorm = (expr) =>
+  `regexp_replace(regexp_replace(regexp_replace(lower(btrim(coalesce(${expr}, ''))), '^(utr|rrn|ref|txn|upi)[^a-z0-9]*', ''), '[^a-z0-9]', '', 'g'), '^t', '')`;
+
 async function usernameExistsAnywhere(
   username,
   currentType = null,
@@ -7732,7 +7741,7 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     const agentProof=await db.query(
       `SELECT * FROM transactions
        WHERE status = 'Agent Verified'
-         AND LOWER(TRIM(utr_number)) = LOWER(TRIM($1))
+         AND ${utrNorm('utr_number')} = ${utrNorm('$1')} AND ${utrNorm('$1')} <> ''
          AND ABS(amount - $2) < 1
          AND id <> $3
        LIMIT 1`,
@@ -7777,10 +7786,10 @@ app.get("/api/agent/external-merchants", async (req, res) => {
   try {
     const auth = getAuthUser(req);
     if (auth.role !== "agent") return res.status(403).json({ message: "Agent authentication required" });
-    // Agent must not be able to see merchant identity (name/code/tenant) — only
-    // the assignment id (opaque grouping key) and its transactions are returned.
     const result = await pool.query(
-      `SELECT x.id,
+      `SELECT x.id,a.external_agent_id,x.tenant_id,x.external_merchant_id,
+              x.external_merchant_code,x.external_merchant_name,x.is_active,
+              x.assigned_at,x.updated_at,
               json_agg(json_build_object(
                 'id',t.id,'transaction_id',t.transaction_id,
                 'external_transaction_id',t.external_transaction_id,
@@ -7790,11 +7799,12 @@ app.get("/api/agent/external-merchants", async (req, res) => {
                 'approved_or_reject_date',t.approved_or_reject_date
               ) ORDER BY t.id DESC) AS transactions
          FROM trustpay_external_merchant_assignments x
+         JOIN agents a ON a.id=x.agent_id
          JOIN transactions t
            ON t.external_assignment_id=x.id
           AND t.agent_id=x.agent_id
         WHERE x.agent_id=$1
-        GROUP BY x.id
+        GROUP BY x.id,a.external_agent_id
         ORDER BY MAX(t.created_at) DESC`,
       [Number(auth.userId)],
     );
@@ -8210,7 +8220,7 @@ app.post("/api/transactions/:id/rescue", async (req, res) => {
     const proofMatch = await client.query(
       `SELECT id, amount FROM transactions
        WHERE status = 'Agent Verified'
-         AND regexp_replace(lower(trim(utr_number)), '^t', '') = regexp_replace(lower(trim($1)), '^t', '')
+         AND ${utrNorm('utr_number')} = ${utrNorm('$1')} AND ${utrNorm('$1')} <> ''
          AND ABS(amount - $2) < 1
        LIMIT 1`,
       [utr, Number(txn.amount || 0)],
@@ -8487,7 +8497,7 @@ app.put("/api/transactions/:id", async (req, res) => {
         const match = await pool.query(
           `SELECT id FROM transactions
            WHERE status = 'Agent Verified'
-             AND regexp_replace(lower(trim(utr_number)), '^t', '') = regexp_replace(lower(trim($1)), '^t', '')
+             AND ${utrNorm('utr_number')} = ${utrNorm('$1')} AND ${utrNorm('$1')} <> ''
              AND ABS(amount - $2) < 1
            LIMIT 1`,
           [effUtr, effAmount],
@@ -10340,7 +10350,7 @@ app.post("/api/payin/agent-submitutr", async (req, res) => {
     // Return a clean success so the agent bot treats it as already done.
     const approvedDup = await pool.query(
       `SELECT id, transaction_id, amount, status FROM transactions
-       WHERE regexp_replace(lower(trim(utr_number)), '^t', '') = regexp_replace(lower(trim($1)), '^t', '')
+       WHERE ${utrNorm('utr_number')} = ${utrNorm('$1')} AND ${utrNorm('$1')} <> ''
          AND status = 'Approved' LIMIT 1`,
       [cleanUtrNumber],
     );
@@ -10387,7 +10397,7 @@ app.post("/api/payin/agent-submitutr", async (req, res) => {
     // agent in place — attribution stays with the entry the customer actually paid.
     const matchedExisting = await pool.query(
       `UPDATE transactions SET status = 'Approved', approved_or_reject_date = CURRENT_TIMESTAMP
-       WHERE (LOWER(TRIM(utr_number)) = LOWER(TRIM($1)) OR LOWER(TRIM(disputed_utr)) = LOWER(TRIM($1)))
+       WHERE ${utrNorm('$1')} <> '' AND (${utrNorm('utr_number')} = ${utrNorm('$1')} OR ${utrNorm('disputed_utr')} = ${utrNorm('$1')})
          AND ABS(amount - $2) < 1
          AND status IN ('Pending', 'UTR Submitted', 'Disputed')
        RETURNING *`,
@@ -10578,7 +10588,7 @@ app.post(
       const proofMatch = await client.query(
         `SELECT * FROM transactions
        WHERE status = 'Agent Verified'
-         AND LOWER(TRIM(utr_number)) = LOWER(TRIM($1))
+         AND ${utrNorm('utr_number')} = ${utrNorm('$1')} AND ${utrNorm('$1')} <> ''
          AND ABS(amount - $2) < 1
        LIMIT 1`,
         [utrInput, Number(txn.amount)],
@@ -11198,7 +11208,7 @@ app.post("/api/checkout/:ref/submit-utr", async (req, res) => {
     const proofMatch = await pool.query(
       `SELECT * FROM transactions
        WHERE status = 'Agent Verified'
-         AND LOWER(TRIM(utr_number)) = LOWER(TRIM($1))
+         AND ${utrNorm('utr_number')} = ${utrNorm('$1')} AND ${utrNorm('$1')} <> ''
          AND ABS(amount - $2) < 1
        LIMIT 1`,
       [utrInput, Number(txn.amount)],
