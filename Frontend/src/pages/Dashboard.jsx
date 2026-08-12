@@ -318,7 +318,7 @@ const res = await api.get(url);
   // in the Breakdowns panel below instead of being duplicated here.
   const summaryCards = [
     { title: "Total Payin", value: money(stats.totalPayinAmount), icon: ArrowDownToLine, tone: "brand" },
-    { title: "Payin Commission", value: money(stats.payinCommission), icon: Percent },
+    // { title: "Payin Commission", value: money(stats.payinCommission), icon: Percent },
     { title: "Total Payout", value: money(stats.totalWithdrawal), icon: ArrowUpFromLine },
     { title: "Payout Commission", value: money(stats.payoutCommission), icon: Percent },
     { title: "Total Settlement Amount", value: money(stats.totalSettlementAmount), icon: Landmark },
