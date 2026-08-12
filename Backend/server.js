@@ -7777,10 +7777,10 @@ app.get("/api/agent/external-merchants", async (req, res) => {
   try {
     const auth = getAuthUser(req);
     if (auth.role !== "agent") return res.status(403).json({ message: "Agent authentication required" });
+    // Agent must not be able to see merchant identity (name/code/tenant) — only
+    // the assignment id (opaque grouping key) and its transactions are returned.
     const result = await pool.query(
-      `SELECT x.id,a.external_agent_id,x.tenant_id,x.external_merchant_id,
-              x.external_merchant_code,x.external_merchant_name,x.is_active,
-              x.assigned_at,x.updated_at,
+      `SELECT x.id,
               json_agg(json_build_object(
                 'id',t.id,'transaction_id',t.transaction_id,
                 'external_transaction_id',t.external_transaction_id,
@@ -7790,12 +7790,11 @@ app.get("/api/agent/external-merchants", async (req, res) => {
                 'approved_or_reject_date',t.approved_or_reject_date
               ) ORDER BY t.id DESC) AS transactions
          FROM trustpay_external_merchant_assignments x
-         JOIN agents a ON a.id=x.agent_id
          JOIN transactions t
            ON t.external_assignment_id=x.id
           AND t.agent_id=x.agent_id
         WHERE x.agent_id=$1
-        GROUP BY x.id,a.external_agent_id
+        GROUP BY x.id
         ORDER BY MAX(t.created_at) DESC`,
       [Number(auth.userId)],
     );
@@ -7812,12 +7811,17 @@ app.get("/api/transactions", async (req, res) => {
     const role = auth.role;
     const userId = Number(auth.userId);
 
+    // trustpay_merchant_name is joined in for admin only: it's the TrustPay
+    // merchant/sub-merchant behind the incoming transaction (via
+    // trustpay_external_merchant_assignments), distinct from merchant_name
+    // (MasterPay's own merchant). Scoped to admin so it isn't newly exposed
+    // to agent/merchant callers of this shared endpoint.
     let query = `
       SELECT t.*, m.name AS merchant_name, m.is_active AS merchant_status,
-             a.name AS agent_name, a.is_active AS agent_status
+             a.name AS agent_name, a.is_active AS agent_status${role === "admin" ? ", x.external_merchant_name AS trustpay_merchant_name" : ""}
       FROM transactions t
       LEFT JOIN merchants m ON t.merchant_id = m.id
-      LEFT JOIN agents a ON t.agent_id = a.id
+      LEFT JOIN agents a ON t.agent_id = a.id${role === "admin" ? " LEFT JOIN trustpay_external_merchant_assignments x ON t.external_assignment_id = x.id" : ""}
     `;
     const values = [];
 

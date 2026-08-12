@@ -176,9 +176,18 @@ function PayinTransactionList() {
     [receivedProofs],
   );
 
+  // "Merchant Name" here is the TrustPay merchant/sub-merchant behind the
+  // incoming transaction (trustpay_merchant_name, joined server-side from the
+  // TrustPay integration's own assignment mapping), not MasterPay's own
+  // merchant. Falls back to MasterPay's merchant_name for transactions that
+  // didn't come through the TrustPay integration.
   const allRows = useMemo(
     () => [
-      ...transactions.map((t) => ({ ...t, _id: `txn-${t.id}` })),
+      ...transactions.map((t) => ({
+        ...t,
+        _id: `txn-${t.id}`,
+        merchant_name: t.trustpay_merchant_name || t.merchant_name,
+      })),
       ...normalizedReceived,
     ],
     [transactions, normalizedReceived],
@@ -245,6 +254,25 @@ function PayinTransactionList() {
     startDate,
     endDate,
   ]);
+
+  // Successful-transaction statuses, matching the definition used elsewhere in
+  // the project for "received"/successful Pay-In totals (Approved, the
+  // Agent Verified bank-proof match, and the legacy 'Success' synonym).
+  const trustpayMerchantSummary = useMemo(() => {
+    const successfulStatuses = new Set(["Approved", "Agent Verified", "Success"]);
+    const map = new Map();
+    for (const row of filteredTransactions) {
+      const name = row.trustpay_merchant_name;
+      if (!name) continue;
+      if (!map.has(name)) map.set(name, { name, count: 0, amount: 0 });
+      if (successfulStatuses.has(row.status)) {
+        const entry = map.get(name);
+        entry.count += 1;
+        entry.amount += Number(row.amount || 0);
+      }
+    }
+    return [...map.values()].sort((a, b) => b.amount - a.amount);
+  }, [filteredTransactions]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -562,6 +590,22 @@ function PayinTransactionList() {
               </select>
             </div>
           </div>
+
+          {trustpayMerchantSummary.length > 0 && (
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {trustpayMerchantSummary.map((m) => (
+                <div key={m.name} className="rounded-card border border-slate-200 bg-white p-4 shadow-card">
+                  <div className="font-semibold text-navy-900">{m.name}</div>
+                  <div className="mt-2 text-sm text-slate-500">
+                    {m.count} successful transaction{m.count === 1 ? "" : "s"}
+                  </div>
+                  <div className="mt-1 text-lg font-bold text-navy-900">
+                    ₹{m.amount.toLocaleString("en-IN")}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {message && (
