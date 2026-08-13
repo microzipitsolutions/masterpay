@@ -7726,7 +7726,14 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
         AND ($4='' OR t.transaction_id=$4) AND x.tenant_id=$2 FOR UPDATE OF t`,[masterpayId,tenant,externalTxn,masterpayRef]);
     if(!found.rows.length){await db.query("ROLLBACK");return res.status(404).json({success:false,message:"Mapped external Pay-In not found"});}
     const current=found.rows[0];
-    if(["Approved","Rejected","Failed","Expired"].includes(current.status) && String(current.utr_number||"").toLowerCase()!==utr.toLowerCase()){
+    // Only a DECIDED Pay-In is locked. 'Failed'/'Expired' are not decisions --
+    // they mean the customer was slow, and a genuine bank credit for that UTR
+    // may still arrive afterwards. Blocking them here meant a TrustPay payin
+    // that expired before its UTR propagated could never be settled from either
+    // side: TrustPay held the UTR, MasterPay stayed empty, and the agent's own
+    // proof sat orphaned. The agent-proof match below still decides whether it
+    // actually approves, so a late UTR cannot approve anything on its own.
+    if(["Approved","Rejected"].includes(current.status) && String(current.utr_number||"").toLowerCase()!==utr.toLowerCase()){
       await db.query("ROLLBACK");return res.status(409).json({success:false,message:`Cannot change UTR on ${current.status} Pay-In`});
     }
     const proofUrl=String(proof.url||"").trim()||null;
