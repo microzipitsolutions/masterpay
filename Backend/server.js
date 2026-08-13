@@ -7767,6 +7767,10 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
         [utr,proofUrl||p.payment_proof||null,proofMetadata,current.id,
          p.account_id,p.agent_id,p.bank_name||"",p.ifsc_code||"",
          p.account_number||"",p.account_holder_name||"",p.upi_id||""])).rows[0];
+      // This pay-in may have expired and been refunded to the agent wallet.
+      // Approving it now means the money WAS collected, so reverse that
+      // refund. No-ops when there is no PAYIN_REFUND to reverse.
+      await redebitAgentWalletForPayin(db,{agentId:settled.agent_id,amount:Number(settled.amount),transactionId:settled.id});
       await db.query(`INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,external_merchant_id,external_transaction_id,agent_id,request_digest,outcome,details)
         VALUES($1,'payin.utr_submitted',$2,$3,$4,$5,$6,'accepted',$7)`,
         [tenant,key,settled.external_merchant_id,externalTxn,settled.agent_id,digest,
@@ -8249,6 +8253,15 @@ app.post("/api/transactions/:id/rescue", async (req, res) => {
        RETURNING *`,
       [utr, id],
     );
+
+    // The order expired and was refunded to the agent wallet; approving it
+    // now means the money WAS collected, so reverse that refund. No-ops
+    // when there is no PAYIN_REFUND to reverse.
+    await redebitAgentWalletForPayin(client, {
+      agentId: updated.rows[0]?.agent_id,
+      amount: Number(updated.rows[0]?.amount || 0),
+      transactionId: updated.rows[0]?.id,
+    });
 
     await client.query("COMMIT");
 
