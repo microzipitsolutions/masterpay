@@ -7726,7 +7726,13 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
         AND ($4='' OR t.transaction_id=$4) AND x.tenant_id=$2 FOR UPDATE OF t`,[masterpayId,tenant,externalTxn,masterpayRef]);
     if(!found.rows.length){await db.query("ROLLBACK");return res.status(404).json({success:false,message:"Mapped external Pay-In not found"});}
     const current=found.rows[0];
-    if(["Approved","Rejected","Failed","Expired"].includes(current.status) && String(current.utr_number||"").toLowerCase()!==utr.toLowerCase()){
+    // Only a DECIDED Pay-In is locked. 'Failed'/'Expired' are not decisions --
+    // they mean the customer was slow, and a genuine bank credit for that UTR
+    // may still arrive afterwards. Blocking them here meant a TrustPay payin
+    // that expired before its UTR propagated could never be settled from
+    // either side. The agent-proof match below still decides whether it
+    // actually approves, so a late UTR cannot approve anything on its own.
+    if(["Approved","Rejected"].includes(current.status) && String(current.utr_number||"").toLowerCase()!==utr.toLowerCase()){
       await db.query("ROLLBACK");return res.status(409).json({success:false,message:`Cannot change UTR on ${current.status} Pay-In`});
     }
     const proofUrl=String(proof.url||"").trim()||null;
@@ -7760,6 +7766,10 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
         [utr,proofUrl||p.payment_proof||null,proofMetadata,current.id,
          p.account_id,p.agent_id,p.bank_name||"",p.ifsc_code||"",
          p.account_number||"",p.account_holder_name||"",p.upi_id||""])).rows[0];
+      // This pay-in may have expired and been refunded to the agent wallet.
+      // Approving it now means the money WAS collected, so reverse that
+      // refund. No-ops when there is no PAYIN_REFUND to reverse.
+      await redebitAgentWalletForPayin(db,{agentId:settled.agent_id,amount:Number(settled.amount),transactionId:settled.id});
       await db.query(`INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,external_merchant_id,external_transaction_id,agent_id,request_digest,outcome,details)
         VALUES($1,'payin.utr_submitted',$2,$3,$4,$5,$6,'accepted',$7)`,
         [tenant,key,settled.external_merchant_id,externalTxn,settled.agent_id,digest,
@@ -8242,6 +8252,15 @@ app.post("/api/transactions/:id/rescue", async (req, res) => {
        RETURNING *`,
       [utr, id],
     );
+
+    // The order expired and was refunded to the agent wallet; approving it
+    // now means the money WAS collected, so reverse that refund. No-ops
+    // when there is no PAYIN_REFUND to reverse.
+    await redebitAgentWalletForPayin(client, {
+      agentId: updated.rows[0]?.agent_id,
+      amount: Number(updated.rows[0]?.amount || 0),
+      transactionId: updated.rows[0]?.id,
+    });
 
     await client.query("COMMIT");
 
