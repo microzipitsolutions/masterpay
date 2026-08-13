@@ -7810,9 +7810,8 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     // Only a DECIDED Pay-In is locked. 'Failed'/'Expired' are not decisions --
     // they mean the customer was slow, and a genuine bank credit for that UTR
     // may still arrive afterwards. Blocking them here meant a TrustPay payin
-    // that expired before its UTR propagated could never be settled from either
-    // side: TrustPay held the UTR, MasterPay stayed empty, and the agent's own
-    // proof sat orphaned. The agent-proof match below still decides whether it
+    // that expired before its UTR propagated could never be settled from
+    // either side. The agent-proof match below still decides whether it
     // actually approves, so a late UTR cannot approve anything on its own.
     if(["Approved","Rejected"].includes(current.status) && String(current.utr_number||"").toLowerCase()!==utr.toLowerCase()){
       await db.query("ROLLBACK");return res.status(409).json({success:false,message:`Cannot change UTR on ${current.status} Pay-In`});
@@ -11485,14 +11484,12 @@ app.post("/api/checkout/:ref/submit-utr", async (req, res) => {
                utr_submitted_at = COALESCE(utr_submitted_at, NOW()),
                approved_or_reject_date = NOW(),
                account_id = $4,
-               -- Was two assignments to agent_id in one SET clause
-               -- (agent_id = $5 AND agent_id = COALESCE($6, agent_id)),
-               -- which Postgres rejects outright
-               -- ("multiple assignments to same column"). It threw on every
-               -- customer UTR submit that matched an agent's proof, so the
-               -- auto-approve never ran and the payin sat at UTR Submitted.
-               -- $5 and $6 are both proof.agent_id; COALESCE over both keeps
-               -- each placeholder referenced so their types still resolve.
+               -- Was two assignments to agent_id in one SET clause, which
+               -- Postgres rejects ("multiple assignments to same column"),
+               -- so this auto-approve threw on every customer UTR that
+               -- matched an agent proof. $5 and $6 are both proof.agent_id;
+               -- COALESCE over both keeps each placeholder referenced so
+               -- their types still resolve.
                agent_id = COALESCE($5, $6, agent_id),
                bank_name = $7,
                ifsc_code = $8,
