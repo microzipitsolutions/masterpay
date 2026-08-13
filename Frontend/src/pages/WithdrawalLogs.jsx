@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshCw, X, Search } from "lucide-react";
 import api from "../api";
+import usePolling from "../lib/usePolling";
+
+// Newest N rows. Matches the backend's LIST_DEFAULT_LIMIT — this list used to
+// pull every withdrawal ever recorded on a 10s timer. The status filter is
+// applied server-side; `search` still scans this bounded window client-side.
+const LIST_LIMIT = 200;
 
 function StatusPill({ status }) {
   const styles = {
@@ -43,27 +49,32 @@ export default function WithdrawalLogs() {
   const [sspayFilter, setSspayFilter] = useState("");
   const [webhookFilter, setWebhookFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
+  // Starts true: the mount fetch runs through usePolling's silent path, so
+  // this is what shows the initial loading state.
+  const [refreshing, setRefreshing] = useState(true);
   const [responseModal, setResponseModal] = useState(null);
   const [checkingId, setCheckingId] = useState(null);
 
-  const fetchList = async (silent = false) => {
+  const fetchList = useCallback(async (silent = false) => {
     try {
       if (!silent) setRefreshing(true);
-      const r = await api.get("/api/withdrawal/transactions");
+      const r = await api.get("/api/withdrawal/transactions", {
+        params: {
+          page: 1,
+          limit: LIST_LIMIT,
+          ...(statusFilter ? { status: statusFilter } : {}),
+        },
+      });
       setList(r.data || []);
+      setError("");
     } catch (e) {
       setError(e?.response?.data?.message || "Could not load");
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [statusFilter]);
 
-  useEffect(() => {
-    fetchList();
-    const i = setInterval(() => fetchList(true), 10000);
-    return () => clearInterval(i);
-  }, []);
+  usePolling(() => fetchList(true), 10000, [fetchList]);
 
   const checkStatus = async (id) => {
     setCheckingId(id);

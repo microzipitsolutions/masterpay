@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AgentLayout from "../../layouts/AgentLayout";
 import api from "../../api";
+import { utrError } from "../../utils/utr";
 
 function CreatePaymentProof() {
   const [accounts, setAccounts] = useState([]);
@@ -48,8 +49,9 @@ function CreatePaymentProof() {
     e.preventDefault();
     setMessage("");
 
-    if (!formData.utr_number) {
-      setMessage("UTR Number is required");
+    const invalidUtr = utrError(formData.utr_number);
+    if (invalidUtr) {
+      setMessage(invalidUtr);
       return;
     }
 

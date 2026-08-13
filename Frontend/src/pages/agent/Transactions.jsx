@@ -19,6 +19,10 @@ import {
   Button,
 } from "../../components/ui";
 
+// Rows per request. Matches the backend's LIST_MAX_LIMIT so a "Load more"
+// costs one round trip per batch.
+const PAGE_LIMIT = 500;
+
 const formatDate = (value) => {
   if (!value) return "-";
   const d = new Date(value);
@@ -131,6 +135,9 @@ function downloadCsv(filename, rows) {
 function Transactions() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadedPages, setLoadedPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -145,16 +152,44 @@ function Transactions() {
   const [resolveError, setResolveError] = useState("");
   const [rescueUtr, setRescueUtr] = useState("");
 
+  // Fetched a page at a time rather than as one unbounded query. `load()`
+  // resets to the newest page; `loadMore()` appends the next one, so older
+  // records stay reachable without pulling the whole table up front.
+  const fetchPage = async (page) => {
+    const res = await api.get("/api/transactions", {
+      params: { page, limit: PAGE_LIMIT },
+    });
+    return Array.isArray(res.data) ? res.data : [];
+  };
+
   const load = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/api/transactions");
-      setRows(Array.isArray(res.data) ? res.data : []);
+      const batch = await fetchPage(1);
+      setRows(batch);
+      setLoadedPages(1);
+      setHasMore(batch.length === PAGE_LIMIT);
     } catch (error) {
       console.error(error);
       alert(error?.response?.data?.message || "Could not load data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    try {
+      setLoadingMore(true);
+      const nextPage = loadedPages + 1;
+      const batch = await fetchPage(nextPage);
+      setRows((previous) => [...previous, ...batch]);
+      setLoadedPages(nextPage);
+      setHasMore(batch.length === PAGE_LIMIT);
+    } catch (error) {
+      console.error(error);
+      alert(error?.response?.data?.message || "Could not load more");
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -363,6 +398,21 @@ function Transactions() {
 
         {!loading && filteredRows.length > 0 && (
           <Pagination page={currentPage} totalPages={totalPages} onChange={setCurrentPage} />
+        )}
+
+        {/* Only the newest PAGE_LIMIT rows are fetched up front; older ones are
+            pulled on demand so the initial load stays bounded. */}
+        {!loading && hasMore && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="rounded-lg border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loadingMore ? "Loading…" : "Load older transactions"}
+            </button>
+          </div>
         )}
 
         <Modal open={!!viewItem} onClose={() => setViewItem(null)} title="Transaction Details" maxWidth="max-w-xl">

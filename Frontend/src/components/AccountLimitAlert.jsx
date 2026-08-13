@@ -7,7 +7,13 @@ import api from "../api";
 // withdraws the money, instead of staying triggered all day. A new payin raises
 // "left in bank" and can re-trigger it. Alert only — nothing is auto-disabled.
 const LIMIT = 200000;
-const POLL_MS = 5000;
+// 20s, not 5s: this banner is mounted on every page for every user, so its poll
+// rate multiplies across the whole logged-in user base, and an account that has
+// already crossed the limit stays crossed.
+//
+// Deliberately not paused on a hidden tab (unlike the list screens): the point
+// of the audible alert is to reach someone who is looking at something else.
+const POLL_MS = 20000;
 
 function collectedOf(account) {
   const used = Number(account.used_amount) || 0;

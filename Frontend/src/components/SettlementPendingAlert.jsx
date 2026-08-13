@@ -5,7 +5,16 @@ import api from "../api";
 // approval. A pending settlement is one that has a UTR (so it's actionable) and
 // whose status is not yet Approved/Rejected — exactly the rows that show
 // Approve/Reject buttons on the Settlement Transactions page.
-const POLL_MS = 5000;
+// 20s, not 5s: this banner is mounted on every page for every merchant, so its
+// poll rate multiplies across the whole logged-in user base. An approval that
+// is already waiting does not need five-second latency.
+//
+// Deliberately not paused on a hidden tab (unlike the list screens): the point
+// of the audible alert is to reach someone who is looking at something else.
+const POLL_MS = 20000;
+// The alert only needs to know whether anything is waiting — it used to pull
+// every settlement transaction ever recorded on each poll.
+const POLL_LIMIT = 200;
 const SETTLEMENT_PAGE = "/merchant/settlement-transactions";
 
 function isPending(row) {
@@ -71,7 +80,9 @@ function SettlementPendingAlert() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await api.get("/api/settlement-transactions");
+        const res = await api.get("/api/settlement-transactions", {
+          params: { page: 1, limit: POLL_LIMIT },
+        });
         const rows = Array.isArray(res.data) ? res.data : [];
         const pendingRows = rows.filter(isPending);
 

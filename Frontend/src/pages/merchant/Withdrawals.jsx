@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, X, CheckCircle2, XCircle, RefreshCw, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import MerchantLayout from "../../layouts/MerchantLayout";
 import api from "../../api";
+import usePolling from "../../lib/usePolling";
 import { Badge, PageHeader } from "../../components/ui";
+
+// Newest N rows; matches the backend's LIST_DEFAULT_LIMIT.
+const LIST_LIMIT = 200;
 
 const STATUS_LABEL = {
   pending: "Pending",
@@ -50,14 +54,20 @@ export default function MerchantWithdrawals() {
   const [disputes, setDisputes] = useState([]);
   const [showDisputeHistory, setShowDisputeHistory] = useState(false);
 
-  const fetchList = async () => {
+  // Bounded to the newest LIST_LIMIT rows — this polled the merchant's entire
+  // withdrawal history every 7 seconds. Search and date filters below still
+  // narrow this window client-side.
+  const fetchList = useCallback(async () => {
     try {
-      const r = await api.get("/api/withdrawal/transactions");
+      const r = await api.get("/api/withdrawal/transactions", {
+        params: { page: 1, limit: LIST_LIMIT },
+      });
       setList(r.data || []);
+      setError("");
     } catch (e) {
       setError(e?.response?.data?.message || "Could not load");
     }
-  };
+  }, []);
   const fetchWallet = async () => {
     try {
       const r = await api.get("/api/withdrawal/my-sspay-balance");
@@ -76,12 +86,13 @@ export default function MerchantWithdrawals() {
   };
 
   useEffect(() => {
+    fetchDisputes();
+  }, []);
+
+  usePolling(() => {
     fetchList();
     fetchWallet();
-    fetchDisputes();
-    const i = setInterval(() => { fetchList(); fetchWallet(); }, 7000);
-    return () => clearInterval(i);
-  }, []);
+  }, 7000, [fetchList]);
 
   const walletInfo = wallet && wallet.enabled && wallet.ok && wallet.balance != null
     ? { balance: Number(wallet.balance), min: Number(wallet.min || 0), max: Number(wallet.max || 0), mode: wallet.mode }

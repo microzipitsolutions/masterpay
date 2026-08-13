@@ -4,6 +4,11 @@ import api from "../../api";
 import { QRCodeSVG } from "qrcode.react";
 import { AlertTriangle, X, ChevronDown, ChevronUp, UploadCloud } from "lucide-react";
 import { Badge, PageHeader } from "../../components/ui";
+import { utrError } from "../../utils/utr";
+
+// Rows per request. Matches the backend's LIST_MAX_LIMIT so a "Load more"
+// costs one round trip per batch.
+const PAGE_LIMIT = 500;
 
 function buildUpiUri({ upiId, payeeName, amount, note, ref }) {
   if (!upiId) return "";
@@ -38,6 +43,9 @@ function money(value) {
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
+  const [loadedPages, setLoadedPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -66,15 +74,41 @@ export default function Transactions() {
   const [proofSubmitting, setProofSubmitting] = useState(false);
   const [proofError, setProofError] = useState("");
 
+  // Fetched a page at a time rather than as one unbounded query. Older records
+  // stay reachable through "Load older transactions" below.
+  const fetchPage = async (page) => {
+    const r = await api.get("/api/transactions", {
+      params: { page, limit: PAGE_LIMIT },
+    });
+    return Array.isArray(r.data) ? r.data : [];
+  };
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const r = await api.get("/api/transactions");
-      setTransactions(Array.isArray(r.data) ? r.data : []);
+      const batch = await fetchPage(1);
+      setTransactions(batch);
+      setLoadedPages(1);
+      setHasMore(batch.length === PAGE_LIMIT);
     } catch (e) {
       setError(e?.response?.data?.message || "Could not load transactions");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    try {
+      setLoadingMore(true);
+      const nextPage = loadedPages + 1;
+      const batch = await fetchPage(nextPage);
+      setTransactions((previous) => [...previous, ...batch]);
+      setLoadedPages(nextPage);
+      setHasMore(batch.length === PAGE_LIMIT);
+    } catch (e) {
+      setError(e?.response?.data?.message || "Could not load more transactions");
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -177,6 +211,13 @@ export default function Transactions() {
 
   const submitProof = async (e) => {
     e.preventDefault();
+    // Proof alone is accepted, but a UTR that IS entered must be well-formed —
+    // same rule the endpoint applies.
+    const invalidUtr = utrError(proofForm.utr_number, { required: false });
+    if (invalidUtr) {
+      setProofError(invalidUtr);
+      return;
+    }
     setProofSubmitting(true);
     setProofError("");
     try {
@@ -361,6 +402,21 @@ export default function Transactions() {
                 Next
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Only the newest PAGE_LIMIT rows are fetched up front; older ones are
+            pulled on demand so the initial load stays bounded. */}
+        {!loading && hasMore && (
+          <div className="mt-4 flex justify-center">
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="rounded-control border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-navy-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loadingMore ? "Loading…" : "Load older transactions"}
+            </button>
           </div>
         )}
 

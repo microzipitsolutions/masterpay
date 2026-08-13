@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { API_BASE_URL } from "../../config/apiConfig";
+import { UTR_DIGITS, utrError } from "../../utils/utr";
 
 function buildUpiParams({ upiId, payeeName, amount, note, ref }) {
   // encodeURIComponent encodes spaces as %20 (not +) which UPI apps handle correctly.
@@ -232,10 +233,14 @@ useEffect(() => {
     if (verificationRemaining === 0 && data && data.status === "UTR Submitted") fetchStatus();
   }, [verificationRemaining, data, fetchStatus]);
 
+  // Single funnel for submit / resubmit / dispute, so validating here covers
+  // all three. The server re-checks — this just avoids a round trip to tell a
+  // customer their reference is the wrong length.
   const postUtr = useCallback(async (endpoint, utrValue) => {
     const cleaned = String(utrValue).trim();
-    if (!cleaned) {
-      setSubmitError("Please enter the UTR number");
+    const invalid = utrError(cleaned);
+    if (invalid) {
+      setSubmitError(invalid);
       return false;
     }
     setSubmitting(true);
@@ -499,6 +504,7 @@ const showForm = status === "Pending";
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={utr}
                   onChange={(e) => setUtr(e.target.value)}
                   placeholder="e.g. 412345678901"
@@ -510,13 +516,13 @@ const showForm = status === "Pending";
                 )}
                 <button
                   type="submit"
-                  disabled={submitting || !utr.trim()}
+                  disabled={submitting || !!utrError(utr)}
                   className="mt-3 w-full brand-gradient hover:brightness-[1.06] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition"
                 >
                   {submitting ? "Submitting…" : "I have paid — Submit UTR"}
                 </button>
                 <p className="mt-2 text-[11px] text-slate-500 leading-snug">
-                  The UTR is a 12-digit reference number from your bank's payment confirmation. Submitting a wrong UTR may delay verification.
+                  The UTR is a {UTR_DIGITS}-digit reference number from your bank's payment confirmation. Submitting a wrong UTR may delay verification.
                 </p>
               </form>
             </>

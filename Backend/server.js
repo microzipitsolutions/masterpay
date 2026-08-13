@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -29,6 +30,10 @@ const TRUSTPAY_SIGNATURE_TOLERANCE_SECONDS = Number(process.env.TRUSTPAY_SIGNATU
 const app = express();
 
 app.use(cors());
+// gzip responses. The list endpoints return highly repetitive JSON, which
+// compresses roughly 10:1 — this is the difference between a few hundred KB
+// and a few MB per poll on the transaction lists.
+app.use(compression());
 // Capture raw body string alongside the parsed JSON so we can verify HMAC
 // signatures (SSPay webhooks) against the original bytes the sender signed.
 app.use(express.json({
@@ -673,6 +678,44 @@ function amountsMatch(a, b) {
 // comparison that is already pinned to one payment.
 const utrNorm = (expr) =>
   `regexp_replace(regexp_replace(regexp_replace(lower(btrim(coalesce(${expr}, ''))), '^(utr|rrn|ref|txn|upi)[^a-z0-9]*', ''), '[^a-z0-9]', '', 'g'), '^t', '')`;
+
+// JS mirror of utrNorm() above — same label prefixes, same punctuation
+// stripping — so length validation agrees with the SQL that matches payments.
+function normalizeUtr(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^(utr|rrn|ref|txn|upi)[^a-z0-9]*/, "")
+    .replace(/[^a-z0-9]/g, "")
+    .replace(/^t/, "");
+}
+
+// A bank UTR/RRN is exactly 12 digits, which is what the hosted checkout has
+// always told customers to enter. Enforced centrally so every submission path
+// — dashboards, hosted checkout, the public merchant API, the TrustPay bridge
+// and test mode — rejects the same values instead of each caller re-deriving
+// the rule (most previously checked only that the field was non-empty).
+//
+// The count is taken from the NORMALIZED form because customers paste the
+// number wrapped in noise ("UTR-138320644088", "RRN 1383 2064 4088"). What
+// gets stored is unchanged; this only rejects input that could not be a UTR.
+const UTR_DIGITS = 12;
+
+// Returns an error message, or null when the value is acceptable.
+// `required: false` allows an absent UTR (endpoints where proof alone is
+// enough) while still rejecting a malformed one that IS supplied.
+function validateUtr(value, { required = true } = {}) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return required ? "UTR number is required" : null;
+
+  const normalized = normalizeUtr(raw);
+  if (!/^\d+$/.test(normalized))
+    return `UTR must be exactly ${UTR_DIGITS} digits`;
+  if (normalized.length !== UTR_DIGITS)
+    return `UTR must be exactly ${UTR_DIGITS} digits — received ${normalized.length}`;
+
+  return null;
+}
 
 async function usernameExistsAnywhere(
   username,
@@ -2990,9 +3033,26 @@ async function expirePendingTransactions() {
       WHERE status = 'Pending'
         AND COALESCE(checkout_mode, false) = false
         AND created_at <= NOW() - INTERVAL '24 hours'
-      RETURNING id, created_at, agent_id, amount
+      RETURNING *
     `);
-    if (result.rows.length > 0) console.log("Rejected:", result.rows);
+    if (result.rows.length > 0)
+      console.log("Rejected:", result.rows.map((r) => r.id));
+
+    // This sweep decides transactions but never told anyone. Every other
+    // Rejected transition fires a webhook; rows aged out here were silently
+    // marked Rejected in MasterPay while the merchant — including TrustPay for
+    // external assignments — kept showing them as pending forever.
+    //
+    // Only rows this statement actually transitioned are returned, so an
+    // already-Rejected transaction is never re-notified.
+    // Caught per row: this runs on a timer with no request to absorb a
+    // rejection, and one undeliverable webhook must not stop the sweep or
+    // surface as an unhandled rejection. Retries are the sweep's job anyway.
+    for (const row of result.rows) {
+      fireWebhook(pool, row, "payin.rejected").catch((e) =>
+        console.error("Stale-sweep rejection webhook error:", row.id, e.message),
+      );
+    }
 
     // Deliberate divergence from the old max_available_limit counter, which
     // has never refunded this particular transition (a pre-existing gap left
@@ -3792,6 +3852,31 @@ function buildIstDateFilter(values, startDate, endDate, column = "created_at") {
     return ` AND DATE(${column} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') <= $${values.length}`;
   }
   return "";
+}
+
+// Shared LIMIT/OFFSET builder for the transaction list endpoints.
+//
+// These previously applied a LIMIT only when the caller sent BOTH `page` and
+// `limit`; every other caller got the whole table. Several screens poll those
+// endpoints on a 7-10s timer with no params, so each open tab was re-reading
+// and re-serializing the full history several times a minute — the dominant
+// source of database and bandwidth load.
+//
+// An absent `page`/`limit` now falls back to page 1 of LIST_DEFAULT_LIMIT rows
+// rather than "everything". Callers that want a specific window keep passing
+// both and are unaffected.
+const LIST_DEFAULT_LIMIT = Number(process.env.LIST_DEFAULT_LIMIT) || 200;
+const LIST_MAX_LIMIT = Number(process.env.LIST_MAX_LIMIT) || 500;
+
+function buildListPagination(values, query) {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const requested = parseInt(query.limit, 10);
+  const limit = Number.isFinite(requested)
+    ? Math.min(LIST_MAX_LIMIT, Math.max(1, requested))
+    : LIST_DEFAULT_LIMIT;
+
+  values.push(limit, (page - 1) * limit);
+  return ` LIMIT $${values.length - 1} OFFSET $${values.length}`;
 }
 
 // ─── SUPER ADMIN CONTROL CENTER ────────────────────────────────────────────────
@@ -7115,12 +7200,7 @@ app.get("/api/settlement-transactions", async (req, res) => {
 
     query += ` ORDER BY st.id DESC`;
 
-    const page = req.query.page ? Math.max(1, parseInt(req.query.page, 10) || 1) : null;
-    const limit = req.query.limit ? Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50)) : null;
-    if (page && limit) {
-      query += ` LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
-      values.push(limit, (page - 1) * limit);
-    }
+    query += buildListPagination(values, req.query);
 
     const result = await pool.query(query, values);
     res.json(result.rows);
@@ -7312,8 +7392,8 @@ app.put(
     const { utr_number } = req.body;
     const proofPath = req.file ? `/uploads/${req.file.filename}` : "";
 
-    if (!utr_number || !utr_number.trim())
-      return res.status(400).json({ message: "UTR number is required" });
+    const utrError = validateUtr(utr_number);
+    if (utrError) return res.status(400).json({ message: utrError });
 
     await assertUniqueUtr(utr_number, "settlement_transactions", id);
 
@@ -7710,7 +7790,8 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     const key=String(req.headers["idempotency-key"]||"").trim();
     const proof=req.body?.proof && typeof req.body.proof === "object" ? req.body.proof : {};
     if(!tenant||!externalTxn||!masterpayId||!utr||!key) return res.status(400).json({success:false,message:"tenant_id, external_transaction_id, MasterPay transaction id, utr_number and Idempotency-Key are required"});
-    if(utr.length>150) return res.status(400).json({success:false,message:"UTR number is too long"});
+    const utrError=validateUtr(utr);
+    if(utrError) return res.status(400).json({success:false,message:utrError});
     const digest=crypto.createHash("sha256").update(req.rawBody||"").digest("hex");
     await db.query("BEGIN");
     const prior=await db.query(`SELECT request_digest,details FROM trustpay_external_audit_logs WHERE tenant_id=$1 AND event_type='payin.utr_submitted' AND idempotency_key=$2 FOR UPDATE`,[tenant,key]);
@@ -7791,6 +7872,146 @@ app.put("/api/external/trustpay/payins/:masterpayTransactionId/utr", authenticat
     await fireWebhook(pool,updated,"payin.utr_submitted");
     return res.json({success:true,transaction:updated});
   }catch(e){await db.query("ROLLBACK").catch(()=>{});if(e&&e.code==="23505"){return res.status(409).json({success:false,message:"UTR already used on another live transaction"});}console.error("TrustPay UTR sync error:",e.message);return res.status(500).json({success:false,message:"Could not synchronize external Pay-In UTR"});}finally{db.release();}
+});
+
+// Inbound decision sync: TrustPay approving or rejecting on its side pushes the
+// outcome here so the two systems stop diverging. The existing TrustPay routes
+// are all inbound (MasterPay has no outbound TrustPay client), so this follows
+// the same shape: same API key + HMAC middleware, same tenant scoping, same
+// Idempotency-Key + audit-log replay handling as the /utr route above.
+//
+// Deliberately conservative in three ways, because this endpoint moves money:
+//   - An Approved/Rejected row is never silently flipped to the opposite
+//     decision. Re-sending the SAME decision is an idempotent success; sending
+//     the opposite returns 409 for a human to reconcile, since reversing a
+//     settled Pay-In means unwinding wallet entries.
+//   - Approval requires a UTR already on the row. MasterPay's own approval
+//     paths all refuse to approve a payment with no bank reference, and this
+//     must not become the one way around that.
+//   - Wallet effects reuse refund/redebit helpers, which are both gated on
+//     ledger history, so a decision synced twice cannot double-credit.
+app.put("/api/external/trustpay/payins/:masterpayTransactionId/status", authenticateTrustPay, async (req, res) => {
+  const db = await pool.connect();
+  try {
+    const tenant = String(req.body?.tenant_id || "").trim();
+    const externalTxn = String(req.body?.external_transaction_id || "").trim();
+    const masterpayId = String(req.params.masterpayTransactionId || "").trim();
+    const masterpayRef = String(req.body?.masterpay_transaction_ref || "").trim();
+    const key = String(req.headers["idempotency-key"] || "").trim();
+    const reason = String(req.body?.reason || "").trim().slice(0, 500);
+
+    const decision = String(req.body?.status || "").trim().toLowerCase();
+    const DECISIONS = { approved: "Approved", rejected: "Rejected" };
+    const targetStatus = DECISIONS[decision];
+
+    if (!tenant || !externalTxn || !masterpayId || !key)
+      return res.status(400).json({ success: false, message: "tenant_id, external_transaction_id, MasterPay transaction id and Idempotency-Key are required" });
+    if (!targetStatus)
+      return res.status(400).json({ success: false, message: "status must be 'approved' or 'rejected'" });
+
+    const digest = crypto.createHash("sha256").update(req.rawBody || "").digest("hex");
+    await db.query("BEGIN");
+
+    const prior = await db.query(
+      `SELECT request_digest, details FROM trustpay_external_audit_logs
+       WHERE tenant_id=$1 AND event_type='payin.status_synced' AND idempotency_key=$2 FOR UPDATE`,
+      [tenant, key],
+    );
+    if (prior.rows.length) {
+      if (prior.rows[0].request_digest !== digest) {
+        await db.query("ROLLBACK");
+        return res.status(409).json({ success: false, message: "Idempotency key reused with different request" });
+      }
+      const replay = await db.query(`SELECT * FROM transactions WHERE id=$1`, [prior.rows[0].details?.transaction_id]);
+      await db.query("ROLLBACK");
+      if (!replay.rows.length) return res.status(409).json({ success: false, message: "Idempotent transaction no longer exists" });
+      return res.json({ success: true, idempotent_replay: true, transaction: replay.rows[0] });
+    }
+
+    const found = await db.query(
+      `SELECT t.* FROM transactions t JOIN trustpay_external_merchant_assignments x ON x.id=t.external_assignment_id
+       WHERE t.id::text=$1 AND t.external_tenant_id=$2 AND t.external_transaction_id=$3
+         AND ($4='' OR t.transaction_id=$4) AND x.tenant_id=$2 FOR UPDATE OF t`,
+      [masterpayId, tenant, externalTxn, masterpayRef],
+    );
+    if (!found.rows.length) {
+      await db.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: "Mapped external Pay-In not found" });
+    }
+    const current = found.rows[0];
+
+    // Already settled the same way — report success without touching the
+    // wallet again, so a retried or duplicated push is harmless.
+    if (current.status === targetStatus) {
+      await db.query("ROLLBACK");
+      return res.json({ success: true, already_applied: true, transaction: current });
+    }
+    if (["Approved", "Rejected"].includes(current.status)) {
+      await db.query("ROLLBACK");
+      return res.status(409).json({
+        success: false,
+        message: `Cannot change a ${current.status} Pay-In to ${targetStatus}`,
+      });
+    }
+    if (targetStatus === "Approved" && !String(current.utr_number || "").trim()) {
+      await db.query("ROLLBACK");
+      return res.status(409).json({
+        success: false,
+        message: "Cannot approve a Pay-In with no UTR — submit the UTR first",
+      });
+    }
+
+    // `reason` is recorded on the audit-log row below rather than here: the
+    // transactions table has no free-text reason column, and the external
+    // audit log is already where every other TrustPay-originated decision is
+    // evidenced.
+    const updated = (await db.query(
+      `UPDATE transactions
+       SET status=$1, approved_or_reject_date=NOW()
+       WHERE id=$2 RETURNING *`,
+      [targetStatus, current.id],
+    )).rows[0];
+
+    // Both helpers no-op unless the matching prior entry exists, so neither can
+    // double-move money if TrustPay re-sends a decision.
+    if (isWalletGateEnabled() && updated.agent_id && Number(updated.amount) > 0) {
+      if (targetStatus === "Rejected") {
+        await refundAgentWalletForPayin(db, {
+          agentId: updated.agent_id,
+          amount: Number(updated.amount),
+          transactionId: updated.id,
+          notes: reason ? `TrustPay rejected: ${reason}` : "TrustPay rejected",
+        });
+      } else {
+        await redebitAgentWalletForPayin(db, {
+          agentId: updated.agent_id,
+          amount: Number(updated.amount),
+          transactionId: updated.id,
+        });
+      }
+    }
+
+    await db.query(
+      `INSERT INTO trustpay_external_audit_logs (tenant_id,event_type,idempotency_key,external_merchant_id,external_transaction_id,agent_id,request_digest,outcome,details)
+       VALUES($1,'payin.status_synced',$2,$3,$4,$5,$6,'accepted',$7)`,
+      [tenant, key, updated.external_merchant_id, externalTxn, updated.agent_id, digest,
+       { transaction_id: updated.id, masterpay_transaction_ref: updated.transaction_id, status: targetStatus, previous_status: current.status, reason: reason || null }],
+    );
+
+    await db.query("COMMIT");
+
+    // Keep the merchant webhook contract identical to a MasterPay-side decision
+    // so downstream receivers see one consistent event stream.
+    await fireWebhook(pool, updated, targetStatus === "Approved" ? "payin.approved" : "payin.rejected");
+
+    return res.json({ success: true, transaction: updated });
+  } catch (e) {
+    await db.query("ROLLBACK").catch(() => {});
+    console.error("TrustPay status sync error:", e.message);
+    return res.status(500).json({ success: false, message: "Could not synchronize external Pay-In status" });
+  } finally {
+    db.release();
+  }
 });
 
 app.get("/api/agent/external-merchants", async (req, res) => {
@@ -7896,12 +8117,7 @@ app.get("/api/transactions", async (req, res) => {
     if (conds_t.length) query += " WHERE " + conds_t.join(" AND ");
     query += ` ORDER BY t.id DESC`;
 
-    const page = req.query.page ? Math.max(1, parseInt(req.query.page, 10) || 1) : null;
-    const limit = req.query.limit ? Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50)) : null;
-    if (page && limit) {
-      query += ` LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
-      values.push(limit, (page - 1) * limit);
-    }
+    query += buildListPagination(values, req.query);
 
     const result = await pool.query(query, values);
     res.json(result.rows);
@@ -8153,7 +8369,11 @@ app.post("/api/transactions/:id/resolve-dispute", async (req, res) => {
     await client.query("COMMIT");
 
     const rejectedTxn = updated.rows[0];
-    fireWebhook(pool, rejectedTxn, "payin.failed");
+    // The row is set to 'Rejected' directly above, so this must be
+    // payin.rejected. It previously sent payin.failed, whose payload carries
+    // status "Failed" — the receiver was told a different outcome than the one
+    // recorded here, which left TrustPay showing these as unresolved.
+    fireWebhook(pool, rejectedTxn, "payin.rejected");
 
     return res.json({
       success: true,
@@ -8185,7 +8405,8 @@ app.post("/api/transactions/:id/rescue", async (req, res) => {
 
     const { id } = req.params;
     const utr = String(req.body?.utr_number || "").trim();
-    if (!utr) return res.status(400).json({ message: "utr_number is required" });
+    const utrError = validateUtr(utr);
+    if (utrError) return res.status(400).json({ message: utrError });
 
     await client.query("BEGIN");
 
@@ -8304,6 +8525,14 @@ app.put(
         return res
           .status(400)
           .json({ message: "Please add UTR number or upload payment proof" });
+      }
+
+      // Proof alone is still accepted here, but a UTR that IS supplied has to
+      // be well-formed.
+      const utrError = validateUtr(cleanUtr, { required: false });
+      if (utrError) {
+        client.release();
+        return res.status(400).json({ message: utrError });
       }
 
       await client.query("BEGIN");
@@ -10321,10 +10550,9 @@ app.post("/api/payin/agent-submitutr", async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "account_number is required" });
-    if (!utr_number || !String(utr_number).trim())
-      return res
-        .status(400)
-        .json({ success: false, message: "utr_number is required" });
+    const utrError = validateUtr(utr_number);
+    if (utrError)
+      return res.status(400).json({ success: false, message: utrError });
     if (!amount || Number(amount) <= 0)
       return res
         .status(400)
@@ -10534,7 +10762,7 @@ app.post(
       const merchant = req.merchantApiUser;
       const { transaction_id, utr_number } = req.body;
 
-      if (!transaction_id || !utr_number) {
+      if (!transaction_id) {
         client.release();
         return res
           .status(400)
@@ -10542,6 +10770,12 @@ app.post(
             success: false,
             message: "transaction_id and utr_number are required",
           });
+      }
+
+      const utrError = validateUtr(utr_number);
+      if (utrError) {
+        client.release();
+        return res.status(400).json({ success: false, message: utrError });
       }
 
       const merchantId = Number(merchant.merchant_id);
@@ -11189,10 +11423,9 @@ app.get("/api/checkout/:ref", async (req, res) => {
 app.post("/api/checkout/:ref/submit-utr", async (req, res) => {
   try {
     const { utr_number } = req.body || {};
-    if (!utr_number || !String(utr_number).trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "utr_number is required" });
+    const utrError = validateUtr(utr_number);
+    if (utrError) {
+      return res.status(400).json({ success: false, message: utrError });
     }
     const utrInput = String(utr_number).trim();
 
@@ -11355,10 +11588,9 @@ app.post("/api/checkout/:ref/submit-utr", async (req, res) => {
 app.post("/api/checkout/:ref/dispute", async (req, res) => {
   try {
     const { utr_number } = req.body || {};
-    if (!utr_number || !String(utr_number).trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "utr_number is required" });
+    const utrError = validateUtr(utr_number);
+    if (utrError) {
+      return res.status(400).json({ success: false, message: utrError });
     }
     const utrInput = String(utr_number).trim();
 
@@ -14523,12 +14755,7 @@ app.get("/api/withdrawal/transactions", async (req, res) => {
 
     query += ` ORDER BY w.id DESC`;
 
-    const page = req.query.page ? Math.max(1, parseInt(req.query.page, 10) || 1) : null;
-    const limit = req.query.limit ? Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50)) : null;
-    if (page && limit) {
-      query += ` LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
-      values.push(limit, (page - 1) * limit);
-    }
+    query += buildListPagination(values, req.query);
 
     const result = await pool.query(query, values);
 
@@ -14793,8 +15020,8 @@ app.post("/api/withdrawal/transactions/:id/submit-utr", async (req, res) => {
     const agentId = Number(auth.userId);
     const { id } = req.params;
     const { utr_number, notes } = req.body || {};
-    if (!utr_number || !String(utr_number).trim())
-      return res.status(400).json({ message: "utr_number required" });
+    const utrError = validateUtr(utr_number);
+    if (utrError) return res.status(400).json({ message: utrError });
 
     // Submitting the UTR clears the withdrawal directly from our side — no separate
     // merchant approval step. Mark it cleared and fire the webhook immediately
@@ -15568,7 +15795,15 @@ app.post("/api/masterpay-test/withdrawal/manual-success", async (req, res) => {
 
     const { transaction_id, utr_number } = req.body || {};
     if (!transaction_id) return res.status(400).json({ message: "transaction_id required" });
-    const utr = String(utr_number || "").trim() || `TMTEST${Date.now()}`;
+    // Auto-generated stand-in when test mode clears a withdrawal with no UTR
+    // supplied. Kept to 12 digits so test data matches what validateUtr()
+    // accepts everywhere else.
+    const suppliedUtr = String(utr_number || "").trim();
+    if (suppliedUtr) {
+      const utrError = validateUtr(suppliedUtr);
+      if (utrError) return res.status(400).json({ message: utrError });
+    }
+    const utr = suppliedUtr || String(Date.now()).slice(-12).padStart(12, "9");
 
     const mpClientId = auth.clientId != null ? Number(auth.clientId) : null;
     const r = await pool.query(
@@ -15770,7 +16005,8 @@ app.post("/api/masterpay-test/payin/submit-utr", async (req, res) => {
     const { transaction_id, utr_number, payment_proof } = req.body || {};
     if (!transaction_id) return res.status(400).json({ message: "transaction_id required" });
     const cleanUtr = String(utr_number || "").trim();
-    if (!cleanUtr) return res.status(400).json({ message: "utr_number required" });
+    const utrError = validateUtr(cleanUtr);
+    if (utrError) return res.status(400).json({ message: utrError });
 
     // Fetch row — scoped to this merchant_id
     const existing = await pool.query(
@@ -16224,8 +16460,9 @@ app.post("/api/test/payin/submit-utr", authenticateTestApiKey, async (req, res) 
     if (!transaction_ref)
       return res.status(400).json({ success: false, message: "transaction_ref required" });
     const cleanUtr = String(utr_number || "").trim();
-    if (!cleanUtr)
-      return res.status(400).json({ success: false, message: "utr_number required" });
+    const utrError = validateUtr(cleanUtr);
+    if (utrError)
+      return res.status(400).json({ success: false, message: utrError });
 
     const existing = await pool.query(
       `SELECT * FROM test_mode_payins
@@ -16382,8 +16619,9 @@ app.get("/api/test/checkout/:ref/status", async (req, res) => {
 app.post("/api/test/checkout/:ref/submit-utr", async (req, res) => {
   try {
     const cleanUtr = String(req.body?.utr_number || "").trim();
-    if (!cleanUtr)
-      return res.status(400).json({ success: false, message: "utr_number is required" });
+    const utrError = validateUtr(cleanUtr);
+    if (utrError)
+      return res.status(400).json({ success: false, message: utrError });
 
     const txn = await loadTestPayinByRef(req.params.ref);
     if (!txn)
@@ -16424,8 +16662,9 @@ app.post("/api/test/checkout/:ref/submit-utr", async (req, res) => {
 app.post("/api/test/checkout/:ref/dispute", async (req, res) => {
   try {
     const cleanUtr = String(req.body?.utr_number || "").trim();
-    if (!cleanUtr)
-      return res.status(400).json({ success: false, message: "utr_number is required" });
+    const utrError = validateUtr(cleanUtr);
+    if (utrError)
+      return res.status(400).json({ success: false, message: utrError });
 
     const txn = await loadTestPayinByRef(req.params.ref);
     if (!txn)

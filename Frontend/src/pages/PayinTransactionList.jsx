@@ -1,8 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE_API_URL } from "../config/apiConfig";
 import { inLocalDateRange } from "../utils/dateRange";
+import usePolling from "../lib/usePolling";
 
 const API_BASE_URL = API_BASE_API_URL;
+
+// Newest N rows per poll. This screen previously downloaded the entire
+// transactions table every 10 seconds for every open tab — the single largest
+// source of API and database load in the app. Status and date filters are now
+// pushed into the query so narrowing the view narrows the request too; search,
+// the merchant/agent filters and paging still run client-side over this window.
+const LIST_LIMIT = 200;
+
+// The CSV export must not be capped at whatever the live poll happens to hold,
+// so it runs its own paged query. EXPORT_PAGE_SIZE matches the backend's
+// LIST_MAX_LIMIT; EXPORT_MAX_PAGES bounds a runaway loop at 10k rows.
+const EXPORT_PAGE_SIZE = 500;
+const EXPORT_MAX_PAGES = 20;
 
 function formatDate(dateValue) {
   if (!dateValue) return "--";
@@ -88,6 +102,7 @@ function PayinTransactionList() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportStartDate, setExportStartDate] = useState("");
   const [exportEndDate, setExportEndDate] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const [search, setSearch] = useState("");
   const [merchantFilter, setMerchantFilter] = useState("");
@@ -103,64 +118,131 @@ function PayinTransactionList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
-  const fetchTransactions = async (silent = false) => {
-    try {
-      if (!silent) {
-        setLoading(true);
-        setMessage("");
-      }
+  const authHeaders = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token],
+  );
 
-      const response = await fetch(`${API_BASE_URL}/transactions`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+  // Server-side filters shared by the live list and the CSV export. The
+  // merchant/agent filters stay client-side: they match on the joined display
+  // name, whereas the API filters on numeric IDs.
+  const buildQuery = useCallback(
+    ({ page, limit, from, to }) => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+      if (statusFilter) params.set("status", statusFilter);
+      if (from) params.set("startDate", from);
+      if (to) params.set("endDate", to);
+      return params;
+    },
+    [statusFilter],
+  );
+
+  const fetchTransactions = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) {
+          setLoading(true);
+          setMessage("");
+        }
+
+        const params = buildQuery({
+          page: 1,
+          limit: LIST_LIMIT,
+          from: startDate,
+          to: endDate,
+        });
+
+        const response = await fetch(
+          `${API_BASE_URL}/transactions?${params.toString()}`,
+          { headers: authHeaders },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Could not fetch payin transactions");
+        }
+
+        setTransactions(Array.isArray(data) ? data : []);
+      } catch (error) {
+        if (!silent) {
+          setMessageType("error");
+          setMessage(error.message || "Something went wrong");
+        }
+      } finally {
+        // Cleared unconditionally: `loading` starts true and the mount fetch
+        // arrives through usePolling's silent path, so a `!silent` guard here
+        // would leave the table stuck on its loading state forever.
+        setLoading(false);
+      }
+    },
+    [authHeaders, buildQuery, startDate, endDate],
+  );
+
+  // Walks pages for its own date range rather than reusing the polled window,
+  // so shrinking that window does not shrink the export.
+  const fetchTransactionsForExport = useCallback(async () => {
+    const rows = [];
+
+    for (let page = 1; page <= EXPORT_MAX_PAGES; page += 1) {
+      const params = buildQuery({
+        page,
+        limit: EXPORT_PAGE_SIZE,
+        from: exportStartDate,
+        to: exportEndDate,
       });
 
+      const response = await fetch(
+        `${API_BASE_URL}/transactions?${params.toString()}`,
+        { headers: authHeaders },
+      );
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Could not fetch payin transactions");
+        throw new Error(data.message || "Could not fetch transactions to export");
       }
 
-      setTransactions(data);
-    } catch (error) {
-      if (!silent) {
-        setMessageType("error");
-        setMessage(error.message || "Something went wrong");
-      }
-    } finally {
-      if (!silent) setLoading(false);
+      const batch = Array.isArray(data) ? data : [];
+      rows.push(...batch);
+
+      if (batch.length < EXPORT_PAGE_SIZE) return { rows, truncated: false };
     }
-  };
+
+    return { rows, truncated: true };
+  }, [authHeaders, buildQuery, exportStartDate, exportEndDate]);
 
   // Agent-received proofs recorded when the UTR already existed with a different
   // amount (kept out of `transactions` by the unique-UTR rule). Shown here so admin
   // still sees what the agent submitted.
-  const fetchReceivedProofs = async (silent = false) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/agent-received-proofs`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (response.ok) setReceivedProofs(Array.isArray(data) ? data : []);
-    } catch (error) {
-      if (!silent) console.log(error);
-    }
-  };
+  const fetchReceivedProofs = useCallback(
+    async (silent = false) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/agent-received-proofs`, {
+          headers: authHeaders,
+        });
+        const data = await response.json();
+        if (response.ok) setReceivedProofs(Array.isArray(data) ? data : []);
+      } catch (error) {
+        if (!silent) console.log(error);
+      }
+    },
+    [authHeaders],
+  );
 
-  useEffect(() => {
-    fetchTransactions();
-    fetchReceivedProofs();
-    const i = setInterval(() => {
+  usePolling(
+    () => {
       fetchTransactions(true);
       fetchReceivedProofs(true);
-    }, 10000);
-    return () => clearInterval(i);
-  }, []);
+    },
+    10000,
+    [fetchTransactions, fetchReceivedProofs],
+  );
 
   // Normalize received proofs into the same row shape as transactions so they render
   // in the table and obey the same filters.
@@ -284,8 +366,25 @@ function PayinTransactionList() {
     currentPage * pageSize,
   );
 
-  const handleDownloadCsv = () => {
-    const exportRows = filteredTransactions.filter((row) =>
+  const handleDownloadCsv = async () => {
+    setExporting(true);
+
+    let fetched;
+    try {
+      fetched = await fetchTransactionsForExport();
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message || "Could not fetch transactions to export.");
+      setExporting(false);
+      return;
+    } finally {
+      setExporting(false);
+    }
+
+    // The server bounds dates by IST day; this re-applies the local-day
+    // semantics the rest of the screen uses, so the CSV matches what the user
+    // picked in the date inputs.
+    const exportRows = fetched.rows.filter((row) =>
       inLocalDateRange(row.created_at, exportStartDate, exportEndDate),
     );
 
@@ -349,8 +448,12 @@ function PayinTransactionList() {
 
     downloadCsv("payin-transactions.csv", rows);
 
-    setMessageType("success");
-    setMessage("CSV downloaded successfully.");
+    setMessageType(fetched.truncated ? "error" : "success");
+    setMessage(
+      fetched.truncated
+        ? `Exported the newest ${exportRows.length} transactions — the range holds more than the ${EXPORT_PAGE_SIZE * EXPORT_MAX_PAGES}-row export limit. Narrow the date range to export the rest.`
+        : "CSV downloaded successfully.",
+    );
     setShowExportModal(false);
   };
 
@@ -1039,9 +1142,10 @@ function PayinTransactionList() {
                 <button
                   type="button"
                   onClick={handleDownloadCsv}
-                  className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-700"
+                  disabled={exporting}
+                  className="rounded-lg bg-red-600 px-8 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Download CSV
+                  {exporting ? "Preparing…" : "Download CSV"}
                 </button>
               </div>
             </div>

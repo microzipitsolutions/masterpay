@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Send, Copy, Check } from "lucide-react";
 import AgentLayout from "../../layouts/AgentLayout";
 import api from "../../api";
+import usePolling from "../../lib/usePolling";
+import { utrError } from "../../utils/utr";
+
+// Newest N rows; matches the backend's LIST_DEFAULT_LIMIT.
+const LIST_LIMIT = 200;
 import {
   PageHeader,
   Badge,
@@ -81,11 +86,22 @@ export default function AgentWithdrawals() {
   const [utrForm, setUtrForm] = useState({ utr_number: "", notes: "" });
   const [submittingUtr, setSubmittingUtr] = useState(false);
 
-  const fetchList = async () => {
-    try { const r = await api.get("/api/withdrawal/transactions"); setList(r.data || []); }
-    catch (e) { setError(e?.response?.data?.message || "Could not load"); }
-  };
-  useEffect(() => { fetchList(); const i = setInterval(fetchList, 7000); return () => clearInterval(i); }, []);
+  // Bounded to the newest LIST_LIMIT rows — this polled the agent's entire
+  // withdrawal history every 7 seconds. The "pending"/"mine" tabs below filter
+  // this window client-side, as before.
+  const fetchList = useCallback(async () => {
+    try {
+      const r = await api.get("/api/withdrawal/transactions", {
+        params: { page: 1, limit: LIST_LIMIT },
+      });
+      setList(r.data || []);
+      setError("");
+    } catch (e) {
+      setError(e?.response?.data?.message || "Could not load");
+    }
+  }, []);
+
+  usePolling(fetchList, 7000, [fetchList]);
 
   const filtered = useMemo(() => {
     if (tab === "pending") return list.filter((w) => w.status === "pending");
@@ -110,7 +126,8 @@ export default function AgentWithdrawals() {
   const submitUtr = async (e) => {
     e.preventDefault();
     if (!utrModal) return;
-    if (!utrForm.utr_number.trim()) { alert("UTR required"); return; }
+    const invalidUtr = utrError(utrForm.utr_number);
+    if (invalidUtr) { alert(invalidUtr); return; }
     setSubmittingUtr(true);
     try {
       await api.post(`/api/withdrawal/transactions/${utrModal.id}/submit-utr`, utrForm);

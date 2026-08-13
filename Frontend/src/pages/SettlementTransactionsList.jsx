@@ -711,6 +711,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { API_BASE_API_URL } from "../config/apiConfig";
 import { inLocalDateRange } from "../utils/dateRange";
+import { utrError } from "../utils/utr";
 
 const API_BASE_URL = API_BASE_API_URL;
 
@@ -892,9 +893,10 @@ function SettlementTransactionsList() {
 
     if (!utrTransaction) return;
 
-    if (!utrNumber.trim()) {
+    const invalidUtr = utrError(utrNumber);
+    if (invalidUtr) {
       setMessageType("error");
-      setMessage("Please enter UTR number.");
+      setMessage(invalidUtr);
       return;
     }
 

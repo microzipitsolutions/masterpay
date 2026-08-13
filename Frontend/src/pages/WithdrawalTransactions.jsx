@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import api from "../api";
+import usePolling from "../lib/usePolling";
 import {
   PageHeader,
   Badge,
@@ -15,6 +16,10 @@ import {
 
 function formatDate(d) { return d ? new Date(d).toLocaleString("en-GB") : "—"; }
 
+// Newest N rows. Matches the backend's LIST_DEFAULT_LIMIT; this is a live
+// monitoring view, so older rows are reached through the date filters.
+const LIST_LIMIT = 200;
+
 export default function WithdrawalTransactions() {
   const [list, setList] = useState([]);
   const [error, setError] = useState("");
@@ -25,11 +30,30 @@ export default function WithdrawalTransactions() {
 
   const [checkingId, setCheckingId] = useState(null);
 
-  const fetchList = async () => {
-    try { const r = await api.get("/api/withdrawal/transactions"); setList(r.data || []); }
-    catch (e) { setError(e?.response?.data?.message || "Could not load"); }
-  };
-  useEffect(() => { fetchList(); const i = setInterval(fetchList, 7000); return () => clearInterval(i); }, []);
+  // Status/date filtering now happens in the query rather than over a full
+  // table download — this request used to return every withdrawal ever, every
+  // 7 seconds, per open tab. The client-side pass below still applies, both as
+  // a second filter for `disputeFilter` (which has no server-side equivalent)
+  // and because the server bounds dates by IST day while the inputs are local.
+  const fetchList = useCallback(async () => {
+    try {
+      const r = await api.get("/api/withdrawal/transactions", {
+        params: {
+          page: 1,
+          limit: LIST_LIMIT,
+          ...(statusFilter ? { status: statusFilter } : {}),
+          ...(startDate ? { startDate } : {}),
+          ...(endDate ? { endDate } : {}),
+        },
+      });
+      setList(r.data || []);
+      setError("");
+    } catch (e) {
+      setError(e?.response?.data?.message || "Could not load");
+    }
+  }, [statusFilter, startDate, endDate]);
+
+  usePolling(fetchList, 7000, [fetchList]);
 
   const checkStatus = async (id) => {
     setCheckingId(id);
