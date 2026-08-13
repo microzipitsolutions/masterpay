@@ -8155,9 +8155,21 @@ app.post("/api/transactions/:id/trigger-webhook", async (req, res) => {
       return res.status(400).json({ message: "No webhook URL found" });
     }
 
-    await fireWebhook(pool, txn);
+    // Derive the event from the row's CURRENT status. This used to fall through
+    // to fireWebhook's "payin.approved" default, so retrying delivery on a
+    // Rejected/Failed/Expired transaction told the merchant it was Approved —
+    // the opposite of what happened, from the one button staff reach for when a
+    // webhook needs resending.
+    const eventName = PAYIN_EVENT_BY_STATUS[txn.status];
+    if (!eventName) {
+      return res.status(400).json({
+        message: `No webhook event maps to status "${txn.status}"`,
+      });
+    }
 
-    res.json({ message: "Webhook triggered successfully" });
+    await fireWebhook(pool, txn, eventName);
+
+    res.json({ message: `Webhook triggered successfully (${eventName})` });
   } catch (error) {
     console.log("Manual webhook trigger error:", error);
     res.status(500).json({ message: "Could not trigger webhook" });
