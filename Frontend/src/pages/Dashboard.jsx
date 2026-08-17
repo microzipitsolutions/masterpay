@@ -212,6 +212,24 @@ const res = await api.get(url);
 
     try {
       setLoading(true);
+      if (card.type === "payinBreakdown") {
+        const params = new URLSearchParams(buildParams());
+        params.set("page", "1");
+        params.set("limit", "1");
+        const res = await api.get(`/api/admin/payins?${params.toString()}`);
+        setDetails((res.data.breakdown || []).map((row) => ({
+          name: row.source_name,
+          fields: {
+            successful_transactions: row.successful_count,
+            total_transactions: row.total_transaction_count,
+            approved_payin_amount: row.approved_amount,
+            commission: row.commission,
+            share_percent: `${row.share_percent}%`,
+            source_key: row.source_key,
+          },
+        })));
+        return;
+      }
 const url = detailsUrl(card.type);
 
 console.log("DETAIL URL:", url);
@@ -285,7 +303,7 @@ const res = await api.get(url);
       return money(value);
     }
 
-    if (key.toLowerCase() === "amount") {
+    if (["amount", "approved_payin_amount", "commission"].includes(key.toLowerCase())) {
       return money(value);
     }
 
@@ -297,7 +315,14 @@ const res = await api.get(url);
 
     return Object.entries(fields)
       .filter(([key]) => !["name"].includes(key.toLowerCase()))
-      .map(([key, value]) => (
+      .map(([key, value]) => key === "source_key" ? (
+        <div key={key} className="mt-3">
+          <a
+            href={`/payin-transactions?${new URLSearchParams({ source: value, ...(startDate ? { startDate } : {}), ...(endDate ? { endDate } : {}) }).toString()}`}
+            className="text-sm font-semibold text-brand-blue hover:underline"
+          >View individual transactions →</a>
+        </div>
+      ) : (
         <div key={key} className="flex justify-between gap-4 mb-2">
           <span className="text-[13px] text-slate-500">
             {formatLabel(key)}
@@ -317,7 +342,7 @@ const res = await api.get(url);
   // repeated as near-identical cards showing the very same totals) now live
   // in the Breakdowns panel below instead of being duplicated here.
   const summaryCards = [
-    { title: "Total Payin", value: money(stats.totalPayinAmount), icon: ArrowDownToLine, tone: "brand" },
+    { title: "Total Payin", value: money(stats.totalPayinAmount), icon: ArrowDownToLine, tone: "brand", type: "payinBreakdown" },
     // { title: "Payin Commission", value: money(stats.payinCommission), icon: Percent },
     { title: "Total Payout", value: money(stats.totalWithdrawal), icon: ArrowUpFromLine },
     { title: "Payout Commission", value: money(stats.payoutCommission), icon: Percent },
@@ -326,7 +351,7 @@ const res = await api.get(url);
     { title: "Total Merchant Commission", value: money(stats.totalMerchantCommission), icon: Store },
     { title: "Total Agent Commission", value: money(stats.totalAgentCommission), icon: Users },
     { title: "Payin Success Rate", value: `${Number(stats.successRate || 0)}%`, icon: CheckCircle2 },
-    { title: "Total Payin Transactions", value: number(stats.totalPayinTransactions), icon: Receipt },
+    { title: "Total Payin Transactions", value: number(stats.totalPayinTransactions), icon: Receipt, type: "payinBreakdown" },
     { title: "Total Settlement Transactions", value: number(stats.totalSettlementTransactions), icon: ListChecks },
   ];
 
@@ -385,7 +410,11 @@ const res = await api.get(url);
 
       {/* ── Summary KPIs — one card per unique metric ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
-        {summaryCards.map((card) => (
+        {summaryCards.map((card) => card.type === "payinBreakdown" ? (
+          <button key={card.title} type="button" onClick={() => openDetails(card)} className="text-left rounded-card focus:outline-none focus:ring-2 focus:ring-brand-blue/30" aria-label={`View ${card.title} breakdown`}>
+            <KpiCard label={card.title} value={card.value} icon={card.icon} tone={card.tone || "light"} />
+          </button>
+        ) : (
           <KpiCard key={card.title} label={card.title} value={card.value} icon={card.icon} tone={card.tone || "light"} />
         ))}
       </div>

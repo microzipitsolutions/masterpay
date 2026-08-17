@@ -8,6 +8,7 @@ const path = require("path");
 const dns = require("dns");
 
 const pool = require("./db");
+const payinReporting = require("./payinReporting");
 
 require("dotenv").config();
 
@@ -8046,6 +8047,69 @@ app.get("/api/agent/external-merchants", async (req, res) => {
   }
 });
 
+// Reconciled Admin Pay-In dataset. The list, its summary cards, dashboard cards,
+// breakdown and CSV paging all consume this endpoint/filter definition.
+app.get("/api/admin/payins", async (req, res) => {
+  try {
+    const auth = getAuthUser(req);
+    if ((auth.originalRole || auth.role) !== "admin")
+      return res.status(403).json({ message: "Admin authentication required" });
+    const adminId = getAdminOwnerId(auth);
+    if (!adminId) return res.json({ rows: [], breakdown: [], totals: { approved_amount: 0, successful_count: 0, total_transaction_count: 0 } });
+
+    const scope = payinReporting.buildPayinScope({
+      adminId,
+      clientId: getClientId(auth),
+      startDate: req.query.startDate,
+      endDate: req.query.endDate,
+      agentId: req.query.viewAgentId || req.query.agent_id,
+      merchantId: req.query.merchantId || req.query.merchant_id,
+      status: req.query.status,
+      sourceKey: req.query.source,
+    });
+    const sourceKey = payinReporting.sourceKeySql();
+    const sourceName = payinReporting.sourceNameSql();
+    const success = payinReporting.successfulStatusSql("t");
+    const base = `FROM transactions t ${payinReporting.PAYIN_REPORT_JOINS} WHERE ${scope.whereSql}`;
+
+    const listValues = [...scope.values];
+    const pagination = buildListPagination(listValues, req.query);
+    const [rowsResult, breakdownResult, totalsResult] = await Promise.all([
+      pool.query(`SELECT t.*, m.name AS merchant_relation_name, a.name AS agent_name,
+                         ${sourceKey} AS source_key, ${sourceName} AS source_name,
+                         x.external_merchant_name AS trustpay_merchant_name
+                    FROM transactions t
+                    ${payinReporting.PAYIN_REPORT_JOINS}
+                    LEFT JOIN agents a ON a.id = t.agent_id
+                   WHERE ${scope.whereSql}
+                   ORDER BY t.id DESC ${pagination}`, listValues),
+      pool.query(`SELECT ${sourceKey} AS source_key, ${sourceName} AS source_name,
+                         COUNT(*)::INT AS total_transaction_count,
+                         COUNT(*) FILTER (WHERE ${success})::INT AS successful_count,
+                         COALESCE(SUM(t.amount) FILTER (WHERE ${success}),0) AS approved_amount,
+                         COALESCE(SUM(t.amount * (COALESCE(m.commission_percent,0)/100.0)) FILTER (WHERE ${success}),0) AS commission
+                    ${base}
+                   GROUP BY ${sourceKey}, ${sourceName}
+                   ORDER BY approved_amount DESC, source_name`, scope.values),
+      pool.query(`SELECT COUNT(*)::INT AS total_transaction_count,
+                         COUNT(*) FILTER (WHERE ${success})::INT AS successful_count,
+                         COALESCE(SUM(t.amount) FILTER (WHERE ${success}),0) AS approved_amount,
+                         COALESCE(SUM(t.amount * (COALESCE(m.commission_percent,0)/100.0)) FILTER (WHERE ${success}),0) AS commission
+                    ${base}`, scope.values),
+    ]);
+    const totals = totalsResult.rows[0];
+    const overall = Number(totals.approved_amount || 0);
+    const breakdown = breakdownResult.rows.map((row) => ({
+      ...row,
+      share_percent: overall ? Math.round((Number(row.approved_amount) / overall) * 10000) / 100 : 0,
+    }));
+    res.json({ rows: rowsResult.rows, breakdown, totals, rules: { amount_statuses: payinReporting.PAYIN_AMOUNT_STATUSES, count: "all statuses", timezone: "Asia/Kolkata created date" } });
+  } catch (error) {
+    console.log("Admin Pay-In report error:", error);
+    res.status(500).json({ message: "Could not fetch Pay-In report" });
+  }
+});
+
 app.get("/api/transactions", async (req, res) => {
   try {
     const auth = getAuthUser(req);
@@ -9554,21 +9618,21 @@ app.get("/api/admin-dashboard", async (req, res) => {
       return ` AND ${alias}.merchant_id = $${values.length}`;
     };
 
-    // ── PayIn summary (Approved only for amounts) ──
-    const payinValues = [adminId];
-    const payinAgentFilter = addAgentFilter("t", payinValues);
-    const payinMerchantFilter = addMerchantFilter("t", payinValues);
-    const payinDate = addDateFilter("t", payinValues);
-
+    // Canonical Pay-In report scope shared with the Admin list and breakdown.
+    // Amount = Approved + legacy Agent Verified; count = every status.
+    const payinScope = payinReporting.buildPayinScope({
+      adminId, clientId: getClientId(auth), startDate, endDate,
+      agentId: selectedAgentId, merchantId: selectedMerchantId,
+    });
     const payinSummary = await pool.query(
       `SELECT
-         COALESCE(SUM(CASE WHEN t.status IN ('Approved','Agent Verified') THEN t.amount ELSE 0 END), 0) AS total_payin_amount,
-         COUNT(t.id) AS total_payin_transactions,
-         COUNT(CASE WHEN t.status IN ('Approved','Success') THEN 1 END) AS approved_count,
-         COUNT(CASE WHEN t.status IN ('Approved','Success','Failed','Rejected','Expired') THEN 1 END) AS finalized_count
-       FROM transactions t
-       WHERE t.created_by_admin_id = $1 ${payinAgentFilter} ${payinMerchantFilter} ${payinDate}`,
-      payinValues,
+         COALESCE(SUM(t.amount) FILTER (WHERE ${payinReporting.successfulStatusSql("t")}), 0) AS total_payin_amount,
+         COUNT(t.id)::INT AS total_payin_transactions,
+         COUNT(t.id) FILTER (WHERE t.status IN ('Approved','Agent Verified'))::INT AS approved_count,
+         COUNT(t.id) FILTER (WHERE t.status IN ('Approved','Agent Verified','Success','Failed','Rejected','Expired'))::INT AS finalized_count
+       FROM transactions t ${payinReporting.PAYIN_REPORT_JOINS}
+       WHERE ${payinScope.whereSql}`,
+      payinScope.values,
     );
 
     // ── Settlement summary (Approved only) ──

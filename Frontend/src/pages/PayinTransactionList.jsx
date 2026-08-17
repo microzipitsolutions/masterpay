@@ -10,8 +10,6 @@ const API_BASE_URL = API_BASE_API_URL;
 // source of API and database load in the app. Status and date filters are now
 // pushed into the query so narrowing the view narrows the request too; search,
 // the merchant/agent filters and paging still run client-side over this window.
-const LIST_LIMIT = 200;
-
 // The CSV export must not be capped at whatever the live poll happens to hold,
 // so it runs its own paged query. EXPORT_PAGE_SIZE matches the backend's
 // LIST_MAX_LIMIT; EXPORT_MAX_PAGES bounds a runaway loop at 10k rows.
@@ -90,9 +88,10 @@ function downloadCsv(filename, rows) {
 
 function PayinTransactionList() {
   const token = localStorage.getItem("rdpay_token");
+  const initialQuery = useMemo(() => new URLSearchParams(window.location.search), []);
 
   const [transactions, setTransactions] = useState([]);
-  const [receivedProofs, setReceivedProofs] = useState([]);
+  const [payinReport, setPayinReport] = useState({ breakdown: [], totals: {} });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [webhookTransaction, setWebhookTransaction] = useState(null);
   const [editTxn, setEditTxn] = useState(null);
@@ -105,11 +104,11 @@ function PayinTransactionList() {
   const [exporting, setExporting] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [merchantFilter, setMerchantFilter] = useState("");
+  const [merchantFilter, setMerchantFilter] = useState(initialQuery.get("source") || "");
   const [agentFilter, setAgentFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(initialQuery.get("startDate") || "");
+  const [endDate, setEndDate] = useState(initialQuery.get("endDate") || "");
 
   const [loading, setLoading] = useState(true);
   const [triggeringWebhook, setTriggeringWebhook] = useState(false);
@@ -136,11 +135,13 @@ function PayinTransactionList() {
         limit: String(limit),
       });
       if (statusFilter) params.set("status", statusFilter);
+      if (merchantFilter) params.set("source", merchantFilter);
+      if (agentFilter) params.set("agent_id", agentFilter);
       if (from) params.set("startDate", from);
       if (to) params.set("endDate", to);
       return params;
     },
-    [statusFilter],
+    [statusFilter, merchantFilter, agentFilter],
   );
 
   const fetchTransactions = useCallback(
@@ -153,13 +154,13 @@ function PayinTransactionList() {
 
         const params = buildQuery({
           page: 1,
-          limit: LIST_LIMIT,
+          limit: EXPORT_PAGE_SIZE,
           from: startDate,
           to: endDate,
         });
 
         const response = await fetch(
-          `${API_BASE_URL}/transactions?${params.toString()}`,
+          `${API_BASE_URL}/admin/payins?${params.toString()}`,
           { headers: authHeaders },
         );
 
@@ -169,7 +170,19 @@ function PayinTransactionList() {
           throw new Error(data.message || "Could not fetch payin transactions");
         }
 
-        setTransactions(Array.isArray(data) ? data : []);
+        const firstRows = Array.isArray(data.rows) ? data.rows : [];
+        const pageCount = Math.ceil(Number(data.totals?.total_transaction_count || 0) / EXPORT_PAGE_SIZE);
+        const remaining = pageCount > 1
+          ? await Promise.all(Array.from({ length: pageCount - 1 }, async (_, index) => {
+              const pageParams = buildQuery({ page: index + 2, limit: EXPORT_PAGE_SIZE, from: startDate, to: endDate });
+              const pageResponse = await fetch(`${API_BASE_URL}/admin/payins?${pageParams.toString()}`, { headers: authHeaders });
+              const pageData = await pageResponse.json();
+              if (!pageResponse.ok) throw new Error(pageData.message || "Could not fetch all Pay-In pages");
+              return Array.isArray(pageData.rows) ? pageData.rows : [];
+            }))
+          : [];
+        setTransactions([...firstRows, ...remaining.flat()]);
+        setPayinReport({ breakdown: data.breakdown || [], totals: data.totals || {} });
       } catch (error) {
         if (!silent) {
           setMessageType("error");
@@ -199,7 +212,7 @@ function PayinTransactionList() {
       });
 
       const response = await fetch(
-        `${API_BASE_URL}/transactions?${params.toString()}`,
+        `${API_BASE_URL}/admin/payins?${params.toString()}`,
         { headers: authHeaders },
       );
       const data = await response.json();
@@ -208,7 +221,7 @@ function PayinTransactionList() {
         throw new Error(data.message || "Could not fetch transactions to export");
       }
 
-      const batch = Array.isArray(data) ? data : [];
+      const batch = Array.isArray(data.rows) ? data.rows : [];
       rows.push(...batch);
 
       if (batch.length < EXPORT_PAGE_SIZE) return { rows, truncated: false };
@@ -217,45 +230,12 @@ function PayinTransactionList() {
     return { rows, truncated: true };
   }, [authHeaders, buildQuery, exportStartDate, exportEndDate]);
 
-  // Agent-received proofs recorded when the UTR already existed with a different
-  // amount (kept out of `transactions` by the unique-UTR rule). Shown here so admin
-  // still sees what the agent submitted.
-  const fetchReceivedProofs = useCallback(
-    async (silent = false) => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/agent-received-proofs`, {
-          headers: authHeaders,
-        });
-        const data = await response.json();
-        if (response.ok) setReceivedProofs(Array.isArray(data) ? data : []);
-      } catch (error) {
-        if (!silent) console.log(error);
-      }
-    },
-    [authHeaders],
-  );
-
   usePolling(
     () => {
       fetchTransactions(true);
-      fetchReceivedProofs(true);
     },
     10000,
-    [fetchTransactions, fetchReceivedProofs],
-  );
-
-  // Normalize received proofs into the same row shape as transactions so they render
-  // in the table and obey the same filters.
-  const normalizedReceived = useMemo(
-    () =>
-      receivedProofs.map((p) => ({
-        ...p,
-        _id: `recv-${p.id}`,
-        transaction_id: `received-${p.id}`,
-        status: p.status || "Agent Verified",
-        _isReceivedProof: true,
-      })),
-    [receivedProofs],
+    [fetchTransactions],
   );
 
   // "Merchant Name" here is the TrustPay merchant/sub-merchant behind the
@@ -264,20 +244,13 @@ function PayinTransactionList() {
   // merchant. Falls back to MasterPay's merchant_name for transactions that
   // didn't come through the TrustPay integration.
   const allRows = useMemo(
-    () => [
-      ...transactions.map((t) => ({
+    () => transactions.map((t) => ({
         ...t,
         _id: `txn-${t.id}`,
-        merchant_name: t.trustpay_merchant_name || t.merchant_name,
+        merchant_name: t.source_name,
       })),
-      ...normalizedReceived,
-    ],
-    [transactions, normalizedReceived],
+    [transactions],
   );
-
-  const uniqueValues = (key) => {
-    return [...new Set(allRows.map((item) => item[key]).filter(Boolean))];
-  };
 
   const filteredTransactions = useMemo(() => {
     return allRows.filter((row) => {
@@ -304,11 +277,9 @@ function PayinTransactionList() {
         String(row.agent_name || "").toLowerCase().includes(searchText) ||
         String(row.agent_name || "").toLowerCase().includes(searchText);
 
-      const merchantMatch =
-        !merchantFilter || row.merchant_name === merchantFilter;
+      const merchantMatch = !merchantFilter || row.source_key === merchantFilter;
 
-      const agentMatch =
-        !agentFilter || row.agent_name === agentFilter;
+      const agentMatch = !agentFilter || String(row.agent_id) === agentFilter;
 
       const statusMatch = !statusFilter || row.status === statusFilter;
 
@@ -340,21 +311,7 @@ function PayinTransactionList() {
   // Successful-transaction statuses, matching the definition used elsewhere in
   // the project for "received"/successful Pay-In totals (Approved, the
   // Agent Verified bank-proof match, and the legacy 'Success' synonym).
-  const trustpayMerchantSummary = useMemo(() => {
-    const successfulStatuses = new Set(["Approved", "Agent Verified", "Success"]);
-    const map = new Map();
-    for (const row of filteredTransactions) {
-      const name = row.trustpay_merchant_name;
-      if (!name) continue;
-      if (!map.has(name)) map.set(name, { name, count: 0, amount: 0 });
-      if (successfulStatuses.has(row.status)) {
-        const entry = map.get(name);
-        entry.count += 1;
-        entry.amount += Number(row.amount || 0);
-      }
-    }
-    return [...map.values()].sort((a, b) => b.amount - a.amount);
-  }, [filteredTransactions]);
+  const sourceSummary = payinReport.breakdown || [];
 
   useEffect(() => {
     setCurrentPage(1);
@@ -609,9 +566,9 @@ function PayinTransactionList() {
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
               >
                 <option value="">All merchants</option>
-                {uniqueValues("merchant_name").map((name) => (
-                  <option key={name} value={name}>
-                    {name}
+                {sourceSummary.map((source) => (
+                  <option key={source.source_key} value={source.source_key}>
+                    {source.source_name}
                   </option>
                 ))}
               </select>
@@ -627,8 +584,8 @@ function PayinTransactionList() {
                 className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-blue"
               >
                 <option value="">All agents</option>
-                {uniqueValues("agent_name").map((name) => (
-                  <option key={name} value={name}>
+                {[...new Map(allRows.filter((row) => row.agent_id && row.agent_name).map((row) => [String(row.agent_id), row.agent_name])).entries()].map(([id, name]) => (
+                  <option key={id} value={id}>
                     {name}
                   </option>
                 ))}
@@ -678,18 +635,23 @@ function PayinTransactionList() {
           </div>
         </div>
 
-        {trustpayMerchantSummary.length > 0 && (
+        {sourceSummary.length > 0 && (
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {trustpayMerchantSummary.map((m) => (
-              <div key={m.name} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="truncate text-sm font-semibold text-navy-900" title={m.name}>
-                  {m.name}
+            <div className="rounded-lg border-2 border-brand-blue bg-blue-50 p-3 shadow-sm">
+              <div className="text-sm font-semibold text-navy-900">Overall approved Pay-In</div>
+              <div className="mt-1 text-xs text-slate-500">{Number(payinReport.totals.total_transaction_count || 0).toLocaleString("en-IN")} total · {Number(payinReport.totals.successful_count || 0).toLocaleString("en-IN")} successful</div>
+              <div className="mt-1 text-base font-bold text-navy-900 tabular-nums">₹{Number(payinReport.totals.approved_amount || 0).toLocaleString("en-IN")}</div>
+            </div>
+            {sourceSummary.map((m) => (
+              <div key={m.source_key} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="truncate text-sm font-semibold text-navy-900" title={m.source_name}>
+                  {m.source_name}
                 </div>
                 <div className="mt-1 text-xs text-slate-500">
-                  {m.count} successful transaction{m.count === 1 ? "" : "s"}
+                  {m.successful_count} successful · {m.total_transaction_count} total · {m.share_percent}%
                 </div>
                 <div className="mt-1 text-base font-bold text-navy-900 tabular-nums">
-                  ₹{m.amount.toLocaleString("en-IN")}
+                  ₹{Number(m.approved_amount || 0).toLocaleString("en-IN")}
                 </div>
               </div>
             ))}
